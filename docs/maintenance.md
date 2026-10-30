@@ -1,43 +1,49 @@
-# Maintenance and next work
+# Maintenance and audit findings
 
-This is the maintained quality/backlog summary, updated in place. It records a maintainer audit of core preparation/storage/submission, DSN parsing/evidence, optional adapters, local checks and documentation. It is not an independent external audit or a proof against all failure schedules. Operational material and unrelated private development history stay outside this repository.
+This living summary records bounded maintainer review, not independent certification. Keep implementation checks in [validation](validation.md), performance evidence in [benchmarks](benchmarks.md), runtime scope in [support boundaries](production-readiness.md), and release-specific proof with its artifacts. Personal operational material stays outside Git.
 
-## Confirmed findings and current disposition
+## Documentation audit — current source
 
-| Priority | Finding | Evidence and disposition |
+Reviewed the root README/AGENTS/CONTRIBUTING/SECURITY/SUPPORT/VERSIONING/CHANGELOG, documentation navigation, command/JSON/configuration guides, storage/submission/recovery, DSN/import/evidence, installation/validation/benchmarks and optional adapter instructions. Claims were compared with current source, parser-derived describe and synthetic execution. This revision changes documentation/examples only; runtime behavior and published tags/assets are preserved.
+
+| Priority | Confirmed problem | Refactor/disposition |
 |---|---|---|
-| P2 | An IMAP timeout could leave a core status/import descendant alive after the worker ended | A blocked synthetic core survived the old total deadline. 0.5.2: the worker owns a separate session; parent timeout/error cleanup and the worker watchdog terminate its process group. Deadline and supervisor-death regressions verify no live synthetic core remains; no mail server is contacted. |
-| P2 | The IMAP cache opener changed a foreign/future/altered SQLite database's journal mode before refusing its schema | Three quiescent synthetic WAL fixtures failed byte-equality before the fix and pass afterward. 0.5.2: consistent read validation before PRAGMAs, followed by revalidation under the initialization lock. No core/cache schema or retry-policy change. Normal SQLite hot-journal recovery is a separate boundary. |
-| P2 | JSON subcommand help returned root help, hiding the selected command's options | A stateless prepare-help regression failed before the fix and passes afterward. 0.5.2: use the selected parser help; keep safe fixed usage errors and version behavior. Canonicalize the usage name; the regression also supplies a different argv[0], and the normalized release artifact is exercised directly. |
-| P2 | Operational documentation contradicted current storage 6 with current-schema 4/5 statements | Current declarations, migration/write effects and guidance corrected. A local checker compares declarations and CLI commands to the actual binary's stateless discovery. |
-| P2 | Keyring first-install instructions invoked store before required configuration and did not distinguish Cargo's default bin directory from the launcher's fixed path | Setup order/path/permissions clarified; preserve working lookup identities. Remove stale account-specific narrative and an implied separate password-manager requirement. |
-| P2 | Local checks did not validate documentation file/heading links or the displayed command/schema contract | Add a no-network checker and synthetic broken-link/schema-drift fixtures to the local gate. It does not certify every sentence or external website. |
+| P2 | Root README's largest initial block was an installer, hiding prepare/review/dry-run and giving no compact actual result | Put a short source/example workflow and fixed JSON projection in the root; move native download/checksum details to installation; add a complete tutorial with synthetic committed inputs |
+| P2 | A pasted native install sequence could continue after curl/checksum failure | Put native retrieval/check/install inside a fail-fast subshell; test that injected download/hash failures never reach install |
+| P2 | Fresh source installation assumed an existing checkout; configuration path/default/credential rules were scattered | Provide explicit clone/install prerequisites and one canonical configuration reference; keep a native alternative and adapter fixed-path distinction |
+| P2 | JSON reference said v1 had no pagination, then documented implemented pagination later | Remove contradiction; separate legacy full list from bounded pages and unverified IDs, preserving exact shape/options |
+| P2 | Storage-opening prose ignored config-only preflight and read-only backup/selected-snapshot verification | Add command-effects matrix and update migration/diagnostic links; current schema remains 6 |
+| P2 | Exit table omitted backup_mode/backup_binding and agent guide mixed feature chronology with submission decisions | Complete error list and lead the workflow with review/authorization/outcome actions; keep fingerprint/guidance details after main steps |
+| P2 | Comparison named our source 0.5.x; generic DSN prose sounded like no-ENVID mode was impossible; an old account-specific operational anecdote remained | Correct current version, qualify strict/header modes, remove deployment narrative and keep primary technical evidence |
+| P2 | Introductory pages repeated policy/current-feature summaries and had no clear canonical ownership | Route by task; separate setup, operation, fields, compatibility and maintainer evidence; link to canonical facts rather than repeat feature history |
+| P3 | Old benchmark rows refer to versions not distributed by this public repository | Identify historical observations and reproduction prerequisites; current 0.7.1 recipe/raw samples remain reproducible |
 
-Changes above are included in the 0.5.2 maintenance patch. Install its matching core and adapters; an unchanged older installation does not receive fixes from a source update. Verify exact artifact hashes and upgrade/restore checks in release evidence.
+## Root README v1 acceptance
 
-## Root and reference documentation audit
+The installed Root README standard v1/skeleton remains the reference, adapted for a native CLI rather than copied literally.
 
-The installed handbook’s Root README standard v1 and skeleton were reviewed, including the root README, AGENTS, CONTRIBUTING, SUPPORT, SECURITY, VERSIONING and CHANGELOG. The canonical documentation map now defines ownership and routes; moving command details did not remove them. Setup and recovery references retain their separate safety boundaries.
-
-| Standard check | Result and evidence |
+| Check | Result / evidence |
 |---|---|
-| Purpose / hook | Pass: factual package/review/submission boundary and visible unknown/accepted limits |
-| First run | Pass for the package workflow: documented synthetic prepare/inspect and configured dry-run succeed without mail network or attempts. The README includes native GitHub download/checksum/install commands; those are checked against public assets as part of publication. |
-| Alternatives | Pass for dated documentation comparison: primary msmtp/Himalaya sources; competitor runtime/retry guarantees explicitly not verified |
-| Measurements | Pass for the declared 0.7.1 small offline workload only: reproducible repeated samples and unchanged dry-run archive. Persistent-disk, large-archive and competitor measurements remain absent. |
-| Badges | Partial: release/license/MSRV link to actual sources; local MSRV gate replaces hosted verification under owner policy. CI and coverage are unconfigured, so no fabricated indicators. The download badge reads cumulative GitHub downloads of the 0.7.1 native asset only; it is not a user/installation count. |
-| Constraints | Pass: consent, SMTP ambiguity, unencrypted trusted storage and adapter/runtime scope visible |
-| Presentation / links | Pass for source review and local checks: concise English root, detailed reference links, command/schema parity. No browser-rendered visual review was available. |
+| Purpose | Pass: AI-agent SMTP workflow, saved final inputs and distinct structured outcomes |
+| Hook | Pass: real prepare/inspect/dry-run commands plus exact projected JSON result; SMTP/delivery distinction remains visible |
+| First useful result | Synthetic fixtures and commands are executed in an isolated home; source install/prepare/inspect/dry-run passed from the reviewed working tree with cached locked dependencies before the documentation commit |
+| Alternatives | Pass for dated primary-source msmtp/Himalaya documentation, not competitor runtime or retry certification |
+| Measurements | Pass for the named repeated current-version small workload; no broad performance superiority or persistent-disk preparation claim |
+| Badges | Partial by explicit scope: version/license and locally verified source MSRV, native-asset download count; hosted CI disabled and coverage unmeasured, so no fabricated indicators |
+| Constraints | Pass: native/adapter prerequisites, consent, unknown outcomes, private state and unsupported capabilities are explicit |
+| Presentation | Concise English root, short functional example, task routes and checked headings/links; rendered HTML structure reviewed, not a browser/pixel-level certification |
 
-The README is not a complete external standard certification: missing coverage/hosted indicators and broader measurements remain explicit. Published assets must carry their own exact-version evidence; unchanged older assets are not implicitly fixed.
+Public release download behavior is separate from core correctness: direct native transfer in this environment hit a timeout, while the GitHub CLI retrieved the full published asset and its checksum matched. Installation documents bounded requests/source fallback; no partial file is treated as installed. Do not label a failed download test as a passed first-run check.
+
+## Maintained runtime regressions
+
+The source baseline already includes worker process-group deadline cleanup, pre-PRAGMA cache schema validation, canonical selected-command JSON help, fixed configuration-before-Keyring-store setup and local document/contract checks. Their synthetic regressions remain in the normal gate. Matching release adapters must be installed with the core; changing source docs does not update an existing executable automatically.
 
 ## Safety conclusions and limits
 
 Reviewed paths preserve the package lock, durable unknown attempt before network I/O, accepted/unknown resend block, final-DATA acceptance distinction, verified TLS and fixed safe errors. The locked lettre source drops/aborts the standard connection after the submission result; no post-acceptance QUIT refusal is turned into a retryable outcome. DSN and reconciliation remain assertions, never authorization or a delivery guarantee. Existing tests exercise crash/concurrency/TLS/SQL failure, migrations, immutable bytes and restoration. No new defect was established in those reviewed submission safeguards by this audit; this is bounded evidence, not complete certification.
 
-Stateful commands can create/open/migrate local state; only describe/help/version are stateless. Trusted local users/ancestors/binaries/backups are prerequisites. Hashes detect corruption, not a same-user attacker who can rewrite data and hashes. Exactly-once SMTP delivery, broad providers/platforms, physical power-loss guarantees and report authenticity remain outside the promise. See [supported scope](production-readiness.md) and [validation](validation.md).
-
-
+Opening effects are command-specific: preflight is configuration-only, backup reads existing current-schema state, and verify-backup reads a selected snapshot. Ordinary stateful commands can initialize/migrate history; use the [effects matrix](json-contract.md#state-opening-effects). Trusted local users/ancestors/binaries/backups are prerequisites. Hashes detect corruption, not a same-user attacker who can rewrite data and hashes. Exactly-once SMTP delivery, broad providers/platforms, physical power-loss guarantees and report authenticity remain outside the promise. See [supported scope](production-readiness.md) and [validation](validation.md).
 
 ## Prioritized next tasks
 

@@ -44,7 +44,7 @@ Recording requires the same exclusive package lock used by send, so a live send 
 
 ## Backup and unresolved evidence
 
-After all writers exit cleanly, back up the complete private state directory. A synthetic offline-copy test verifies that a complete database copy preserves evidence and the resend block. It does not certify stale backups: a snapshot taken before an attempt can lose submission history. Reconcile external events before allowing any restored state to submit mail. Do not run original and restored databases as independent senders.
+Use the [snapshot/recovery procedure](upgrade-and-recovery.md) after stopping writers; protect configuration/credential identities separately. A synthetic offline-copy test verifies that a complete database copy preserves evidence and the resend block. It does not certify stale backups: a snapshot taken before an attempt can lose submission history. Reconcile external events before allowing any restored state to submit mail. Do not run original and restored databases as independent senders.
 
 ## Record recipient feedback separately
 

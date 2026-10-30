@@ -67,7 +67,7 @@ On Unix, file inputs must be regular files with no final-component symlink; copy
 
 ## Module boundaries and audit follow-up
 
-CLI dispatch is in lib.rs; config.rs validates configuration/addresses; files.rs handles bounded/private files; package.rs builds and exports immutable MIME; store.rs verifies SQL data; smtp.rs owns transport construction and submission. Legacy import, reconciliation and migrations remain separate modules. DSN report interpretation, transport, persistence and tests have separate modules; operational limits are in [supported scope](production-readiness.md).
+CLI dispatch is in lib.rs; config.rs validates configuration/addresses; diagnostics.rs performs configuration-only preflight; files.rs handles bounded/private files; package.rs builds and exports immutable MIME; store.rs verifies SQL data; smtp.rs owns transport construction and submission. listing.rs selects bounded or legacy archive reads; backup.rs pins/copies/verifies selected snapshots. Legacy import, reconciliation and migrations remain separate modules. DSN report interpretation, transport, persistence and tests have separate modules; operational limits are in [supported scope](production-readiness.md).
 
 Only final DATA code 250 counts as accepted. A positive but unexpected code is unknown and blocks resubmission. timeout_seconds is a socket I/O setting, not a strict wall-clock deadline for the entire DNS/SMTP session.
 

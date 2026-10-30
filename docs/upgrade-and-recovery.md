@@ -6,7 +6,7 @@ Current contracts: JSON envelope 1, core storage 6, package manifests 1–3 and 
 
 ## Protected backup and restore
 
-Version 0.6.0 adds `backup --output NEW_DIRECTORY` and `verify-backup DIRECTORY` for private database-only snapshots; see [snapshot consistency and limits](backup.md). It excludes configuration/credentials and does not automate restoration or establish freshness. Prefer stopping writers before running it. The manual procedure below also applies to older compatible installations.
+`backup --output NEW_DIRECTORY` and `verify-backup DIRECTORY` provide database-only snapshots; see [snapshot consistency and limits](backup.md). Snapshots exclude configuration/credentials and do not automate restoration or establish freshness. Prefer stopping writers before running it. The manual procedure below also applies to older compatible installations.
 
 1. Stop all core CLI/adapters/workers before copying state. Separate SQLite backup calls are individually consistent, not a global live snapshot of core and cache; quiesce writers first.
 2. Keep a mode-0700 backup outside Git containing private configuration, `mail.sqlite3` and optional `imap-dsn.sqlite3` with private file permissions. Credentials remain in their external secret store/environment, not in the mail archive. Preserve lookup identities and retain another protected copy before investigating damage.

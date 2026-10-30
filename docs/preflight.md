@@ -1,6 +1,6 @@
 # Offline setup diagnostics
 
-Available in 0.7.0. These commands never send mail, read an inbox or open/migrate the operational database. They do not prompt. Exit 0 means diagnostics completed; inspect `result.ready`, which may be false. Usage/unresolved configuration path and output failures retain documented exit codes. Do not infer remote authentication, delivery or owner send authorization from readiness.
+These commands never send mail, read an inbox or open/migrate the operational database. They do not prompt. Exit 0 means diagnostics completed; inspect `result.ready`, which may be false. Usage/unresolved configuration path and output failures retain documented exit codes. Do not infer remote authentication, delivery or owner send authorization from readiness.
 
 ## Native core
 
@@ -9,7 +9,7 @@ agent-mailer preflight --json
 agent-mailer --config /private/config.toml preflight --json
 ```
 
-Selects configuration using explicit `--config`, otherwise `--home`/`AGENT_MAILER_HOME`, otherwise the existing default home. Explicit config works without HOME. Unlike doctor, this does not create a state directory/database or expose sender/login/path values in the result.
+Use the [configuration reference](configuration.md) for TOML fields and credential setup. Selects configuration using explicit `--config`, otherwise `--home`/`AGENT_MAILER_HOME`, otherwise the existing default home. Explicit config works without HOME. Unlike doctor, this does not create a state directory/database or expose sender/login/path values in the result.
 
 `result` uses `preflight_schema_version:1`, `ready`, `checks`, `network_used:false`, `storage_opened:false`, `credential_content_validated:false` and `remote_authentication_verified:false`. The envelope remains JSON schema 1.
 

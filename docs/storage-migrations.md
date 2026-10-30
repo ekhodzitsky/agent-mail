@@ -4,7 +4,7 @@ The product version and JSON/manifest schema are independent of the SQLite schem
 
 ## Opening and migration
 
-Every stateful CLI operation opens the selected store, including doctor, inspect, status and dry-run. Stateless describe/help/version do not. Opening a new empty database creates schema 6. Opening the exact initial unversioned development schema (application_id/user_version both zero) atomically upgrades it to schema 6. The exact schema-1, schema-2, schema-3, schema-4 and schema-5 layouts are also supported. Upgrading installs missing completed-attempt protections, reconciliation/DSN/operation tables, header-correlated reports and the current database identity; package and attempt rows are not rewritten, rehashed, regenerated or marked sent.
+Doctor, inspect, status, dry-run and other ordinary stateful commands open the selected store. Describe/help/version do not. Preflight reads only configuration; backup reads an existing current-schema source without migration, and verify-backup reads only its selected snapshot. See [command effects](json-contract.md#state-opening-effects). Opening a new empty database creates schema 6. Opening the exact initial unversioned development schema (application_id/user_version both zero) atomically upgrades it to schema 6. The exact schema-1, schema-2, schema-3, schema-4 and schema-5 layouts are also supported. Upgrading installs missing completed-attempt protections, reconciliation/DSN/operation tables, header-correlated reports and the current database identity; package and attempt rows are not rewritten, rehashed, regenerated or marked sent.
 
 Recognition compares the tables, indexes and triggers in sqlite_schema to the known canonical layout, including SQL definitions. A consistent read transaction checks identity/layout before schema or journal changes. After acquiring an immediate write transaction, the opener checks again, so concurrent openers can observe a completed migration safely. Migration validates SQLite quick_check and foreign-key consistency, installs the additional triggers and sets both identity fields in the same transaction. Commit failure rolls back schema additions and version stamps. Normal durability remains DELETE journal plus synchronous EXTRA.
 
@@ -26,7 +26,7 @@ Version 3 replaces the reconciliation insertion guard to admit accepted attempts
 
 Schema 4 adds append-only dsn_events and dsn_reports tables with foreign keys, immutable triggers and exact-byte/digest report idempotency. Existing package/attachment/attempt/reconciliation rows are not rewritten. Report insertion requires a matching accepted/unknown attempt. Request parameters/capability observations are separate immutable events; the application additionally binds ENVID and recipient and verifies digests. Migration commit failure rolls back to the original schema.
 
-## Agent Mailer 0.3: schema 5
+## Schema 5: preparation operations
 
 Recognized exact layouts 0–4 migrate to schema 5 by adding prepare_operations plus immutable update/delete triggers. The table binds key SHA-256 to fingerprint schema-1 input SHA-256, package ID and preparation timestamp; no existing package, attempt or evidence bytes are rewritten. Migration recognition/commit failure and schema-4 history preservation have regression tests. Old readers reject schema 5, and no downgrade is supported. Back up privately before upgrading; never treat a restored independent copy as permission to resend. New preparation and operation publication share one IMMEDIATE transaction. See [operation contract](agent-workflow.md).
 

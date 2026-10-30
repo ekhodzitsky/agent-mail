@@ -1,83 +1,80 @@
 # Agent Mail
 
-Agent Mail is a Rust email CLI for AI agents. It freezes a reviewable letter and PDF attachments before submission, records attempts durably, and blocks ordinary resends after SMTP acceptance or an unknown outcome.
+Agent Mail (`agent-mailer`) is a Rust CLI for AI agents that prepare and send email through an existing SMTP account. It saves the final letter and PDFs as a reviewable package, records each submission attempt, and returns JSON that distinguishes acceptance, refusal and uncertainty.
 
 [![Version: 0.7.1](docs/badges/release.svg)](docs/releases.md)
 [![Native binary downloads for v0.7.1](https://img.shields.io/github/downloads/ekhodzitsky/agent-mail/v0.7.1/agent-mailer-0.7.1-x86_64-unknown-linux-gnu?label=binary%20downloads)](https://github.com/ekhodzitsky/agent-mail/releases/tag/v0.7.1)
 [![Source MSRV: Rust 1.88](docs/badges/msrv.svg)](Cargo.toml)
 [![License: MIT](docs/badges/license.svg)](LICENSE)
 
-[Documentation](docs/README.md) · [Agent workflow](docs/agent-workflow.md) · [Supported scope](docs/production-readiness.md)
+[Start here](docs/getting-started.md) · [Agent workflow](docs/agent-workflow.md) · [Documentation](docs/README.md)
 
-```text
-prepare → inspect → send --dry-run → owner instruction → send → status
-                                                            accepted ≠ delivered
-                                                            unknown → retry blocked
-```
-
-SMTP acceptance does **not** confirm delivery. The CLI cannot verify human consent; a real send requires the owner's separate instruction for the reviewed package.
+A package freezes the sender, recipient, subject, final plain/HTML letter, attachment bytes and MIME before any submission. The attempt journal records `accepted`, `rejected` or `unknown`. Accepted/unknown packages cannot be resent by an ordinary command; SMTP acceptance still does **not** confirm recipient delivery.
 
 ## Quick start
 
-Use Linux x86_64/glibc and trusted local storage. The native core needs no Rust, Node.js, Bun or Python runtime. This example needs curl, GNU coreutils, a shell and jq; downloads contact GitHub, while package preparation/review/dry-run use no mail network, credentials or account.
+From a new working directory, use Git, Rust 1.88+, a C compiler, a shell and jq. Installation downloads GitHub/Cargo sources. The example then runs entirely locally: no mail account, credential or SMTP server is needed. A prebuilt binary is available through [native installation](docs/releases.md#install-the-native-linux-asset).
 
 ```sh
-umask 077
-download_dir="$(mktemp -d)"
-release_url="https://github.com/ekhodzitsky/agent-mail/releases/download/v0.7.1"
-curl -fLsS "$release_url/agent-mailer-0.7.1-x86_64-unknown-linux-gnu" \
-  -o "$download_dir/agent-mailer-0.7.1-x86_64-unknown-linux-gnu"
-curl -fLsS "$release_url/SHA256SUMS" -o "$download_dir/SHA256SUMS"
-(cd "$download_dir" && sha256sum --ignore-missing --check SHA256SUMS)
-install -Dm755 "$download_dir/agent-mailer-0.7.1-x86_64-unknown-linux-gnu" \
-  "$HOME/.local/bin/agent-mailer"
+git clone https://github.com/ekhodzitsky/agent-mail.git
+cd agent-mail
+cargo install --path . --locked --root "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
+umask 077
 demo_home="$(mktemp -d)"
-printf 'sender="sender@example.org"\n[smtp]\nhost="127.0.0.1"\nport=465\nsecurity="tls"\n' \
-  > "$demo_home/config.toml"
-printf 'Synthetic application' > "$demo_home/subject.txt"
-printf 'Synthetic letter.\nRegards, Test\n' > "$demo_home/letter.txt"
-printf '%%PDF-1.4\nSynthetic fixture only\n%%%%EOF\n' > "$demo_home/resume.pdf"
-package_id="$(agent-mailer --home "$demo_home" prepare --to recipient@example.org \
-  --subject-file "$demo_home/subject.txt" \
-  --body-file "$demo_home/letter.txt" \
-  --attach "$demo_home/resume.pdf" --json | jq -er '.result.package_id')"
+cp examples/demo/config.toml "$demo_home/config.toml"
+cp examples/demo/resume.fixture "$demo_home/resume.pdf"
+package_id="$(agent-mailer --home "$demo_home" prepare \
+  --to recipient@example.org --subject-file examples/demo/subject.txt \
+  --body-file examples/demo/letter.txt --attach "$demo_home/resume.pdf" \
+  --operation-key demo/application --json | jq -er '.result.package_id')"
 agent-mailer --home "$demo_home" inspect "$package_id" --json
-agent-mailer --home "$demo_home" send "$package_id" --dry-run --json
+agent-mailer --home "$demo_home" send "$package_id" --dry-run --json \
+  | jq '{ok, state: .result.state, dry_run: .result.dry_run, network_used: .result.network_used}'
 ```
 
-Inspect shows frozen contents and hashes. The last JSON must have `ok:true`, `result.dry_run:true`, `result.network_used:false` and state `prepared`; no attempt is recorded. No local server needs to be running. The PDF is a byte-preservation fixture, not a rendering example. Keep generated state private. Checksums detect corruption, not signed provenance.
+Inspect returns the frozen contents and hashes. The final command projects the JSON result:
 
-The executable/package remains `agent-mailer` for compatibility. [Source installation](docs/releases.md) requires Rust 1.88+ and a C compiler; MSRV describes source builds and is verified locally. [Commands and configuration](docs/cli.md) cover real setup and optional adapters. [Local SMTP tests](docs/local-testing.md) exercise actual submission without external recipients.
+```json
+{"ok":true,"state":"prepared","dry_run":true,"network_used":false}
+```
+
+No submission attempt is recorded. The example PDF is only a byte-preservation fixture. Keep the generated directory private; explicit --home leaves ordinary history selection unchanged. [The full walkthrough](docs/getting-started.md) explains each step. The [local SMTP test](docs/local-testing.md) covers actual capture-only submission.
+
+## Working with an agent
+
+Use `describe --json` for installed command/argument discovery. A stable prepare operation key recovers the same package after lost output and refuses changed inputs. Review the saved package, run dry-run, and obtain a separate owner instruction before real send. No interactive questions appear in agent mode.
+
+After an unknown outcome, inspect history and investigate; do not retry or recreate the letter automatically. Message-ID helps correlation but does not guarantee recipient deduplication. [Submission and result handling](docs/agent-workflow.md) keeps consent, SMTP state and delivery observations separate.
 
 ## Comparison
 
-For agents using an existing mail account:
+For existing mail accounts, these tools serve different workflows:
 
-| Tool | Workflow | Choose when |
+| Tool | Primary task | Choose when |
 |---|---|---|
-| Agent Mail | Frozen package, review, conservative SMTP journal | Persisting preparation and unknown outcomes matters |
-| [msmtp](https://marlam.de/msmtp/) | Sendmail-compatible SMTP submission | An existing composer/pipeline already manages messages |
-| [Himalaya](https://github.com/pimalaya/himalaya) | CLI mailbox/message management with JSON | Broader mailbox backends and inbox operations are needed |
+| Agent Mail | Reviewed packages and journaled SMTP attempts | Agents need saved inputs and conservative recovery |
+| [msmtp](https://marlam.de/msmtp/) | Sendmail-compatible SMTP submission | A composer or Unix pipeline manages the message lifecycle |
+| [Himalaya](https://github.com/pimalaya/himalaya) | CLI mailbox/message management with JSON | Broader inbox operations/backends are needed |
 
-These tools are not drop-in journal replacements. Alternative retry guarantees are **not verified**. [Versions, primary sources and comparison limits](docs/comparison.md).
+They are not drop-in journal replacements; alternative retry guarantees are **not verified**. [Versions, primary sources and comparison limits](docs/comparison.md).
 
 ## Benchmarks
 
-Local freeze/review/offline-validation workload: 20 synthetic packages per run, one 4.3 KB PDF each, three runs. Median run means; lower latency is smaller:
+On Linux x86_64/Ryzen AI 9 HX 370, 0.7.1 prepared/reviewed/validated 20 synthetic packages per run, three times, with one 4.3 KB PDF each. Median run means, including process startup; lower is smaller:
 
-| Native version | Prepare, ms | Inspect, ms | Dry-run, ms |
-|---|---:|---:|---:|
-| 0.7.1 | 3.43 | 3.22 | 3.30 |
+| Prepare, ms | Inspect, ms | Dry-run, ms |
+|---:|---:|---:|
+| 3.43 | 3.22 | 3.30 |
 
-Linux x86_64, Ryzen AI 9 HX 370, tmpfs, warm caches; process startup included. No competitor speedup, persistent-disk preparation or large-archive guarantee is claimed. [Raw samples, reproduction and separate ext4 backup/listing results](docs/benchmarks.md). Failure/concurrency/TLS correctness is exercised separately by [local validation](docs/validation.md).
+State used tmpfs and warm/uncontrolled caches. These numbers establish no competitor advantage or persistent-disk preparation guarantee. [Raw samples and reproduction](docs/benchmarks.md) also separate ext4 backup and bounded-list work. [Correctness checks](docs/validation.md) exercise corruption, concurrency, refusal, TLS and crashes independently of timings.
 
 ## Limitations
 
-Credentials stay outside packages/Git; TLS verification is mandatory. JSON results are versioned and agent commands do not prompt. Review output contains private content. State is unencrypted; trust local users/directories and follow [recovery](docs/upgrade-and-recovery.md). Snapshot integrity cannot prove freshness or authorize retries.
+The native core supports Linux x86_64/glibc without Node.js, Bun or Python. Rust/MSRV concerns source builds. Optional Keyring/IMAP adapters have separate runtimes. Credentials stay outside Git/packages; TLS verification is mandatory. State is unencrypted and assumes trusted local users/storage. [Configuration](docs/configuration.md), [readiness checks](docs/preflight.md) and [recovery](docs/upgrade-and-recovery.md) cover deployment.
 
-Exactly-once SMTP delivery cannot be guaranteed. DSNs are unverified assertions. Sent-folder synchronization and OAuth refresh are not implemented. Optional Keyring/IMAP adapters have separate Python/desktop requirements. [Preflight](docs/preflight.md) checks local readiness, not authentication.
+Exactly-once SMTP delivery is not guaranteed. DSNs are unverified assertions; snapshot integrity cannot prove freshness or authorize retries. Sent synchronization and OAuth refresh are not implemented.
 
-Badges describe release 0.7.1; downloads count that native asset's cumulative GitHub downloads, not users/installations. Hosted CI is disabled by project policy; coverage is unmeasured, so neither has a fabricated badge. Cargo registry publication is disabled. See [maintenance](docs/maintenance.md) and [changelog](CHANGELOG.md).
+Version/download badges describe release 0.7.1; downloads count that binary asset, not users. MSRV is verified locally. Hosted CI is disabled by project policy and coverage is unmeasured; no fabricated indicators are shown. See [maintenance](docs/maintenance.md) and [changelog](CHANGELOG.md).
 
 [Help](SUPPORT.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [MIT license](LICENSE)

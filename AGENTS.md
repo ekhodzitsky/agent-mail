@@ -6,7 +6,7 @@ Rust CLI for AI agents preparing immutable mail packages and submitting explicit
 
 ## Mandatory instructions
 
-Read this handbook and the linked coding principles before changing code. Product behavior and contracts: [README.md](README.md), [architecture](docs/architecture.md), [JSON contract](docs/json-contract.md).
+Read this handbook and the linked coding principles before changing code. Product behavior and contracts: [README.md](README.md), [configuration](docs/configuration.md), [architecture](docs/architecture.md), [JSON contract](docs/json-contract.md).
 
 ## Mail authorization and privacy
 
@@ -103,7 +103,7 @@ commit or publish while violations remain.
 
 ## Rename compatibility
 
-Agent Mailer retains the legacy state directory, `AGENT_MAILER_HOME`, keyring schema/application identifiers and configured secret names. See [upgrade and recovery](docs/upgrade-and-recovery.md). Never create a fresh store merely to rename its directory: existing history enforces resend blocks. Keep earlier private development records outside this repository.
+Agent Mail retains the legacy state directory, `AGENT_MAILER_HOME`, keyring schema/application identifiers and configured secret names. See [upgrade and recovery](docs/upgrade-and-recovery.md). Never create a fresh store merely to rename its directory: existing history enforces resend blocks. Keep earlier private development records outside this repository.
 
 ## Agent and IMAP interfaces
 

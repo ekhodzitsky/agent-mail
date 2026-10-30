@@ -1,0 +1,6 @@
+# Synthetic offline example; no service needs to listen here.
+sender = "sender@example.org"
+[smtp]
+host = "127.0.0.1"
+port = 465
+security = "tls"

@@ -4,6 +4,13 @@ User-visible changes are recorded here. Follow [versioning](VERSIONING.md); prod
 
 ## Unreleased
 
+### Documentation
+
+- Rework the root README around a visible prepare/inspect/offline-validation workflow and actual JSON result; move detailed native installation into the installation guide and add a complete synthetic tutorial with committed byte fixtures.
+- Add canonical configuration/path/SMTP/timeout reference, task-oriented documentation index and ordered command/agent workflow. Keep diagnostics, consent and outcome recovery separate from serialized reference details.
+- Correct stale no-pagination/schema-opening claims, missing backup error codes and outdated comparison version; document read-only preflight/backup exceptions and strict-versus-header DSN mode clearly. Remove account-specific operational narrative and qualify historical benchmark reproducibility.
+- Audit root/support/security/versioning, operational guides, contracts and adapter documentation against current source/discovery. Runtime behavior, release tags, state/credentials and compiled artifacts are unchanged.
+
 ## 0.7.1 — 2026-10-30
 
 - Align the root README with Root README standard v1: complete native installation/prepare/inspect/dry-run, explicit prerequisites and expected success, primary-source alternatives, current-version repeated measurements, accurate per-asset download badge and visible limitations.

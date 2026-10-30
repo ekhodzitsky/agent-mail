@@ -15,7 +15,7 @@ Command times include process startup, SQLite open/validation, JSON serializatio
 
 ## Recorded results
 
-Agent Mailer 0.7.1 normalized production binary; SHA-256 and full driver output are recorded in [raw results](benchmarks-offline.json). The release verification records its exact source revision. Rust release build on Linux x86_64, AMD Ryzen AI 9 HX 370, 24 logical CPUs; Python 3.14.4. Temporary state used tmpfs, normal warm OS caches, default SQLite DELETE journal/EXTRA synchronous behavior and no pinned CPU/power settings. Compilation is excluded. No CPU governor, filesystem flush, memory or cold-start experiment was performed.
+Agent Mail 0.7.1 normalized production binary; SHA-256 and full driver output are recorded in [raw results](benchmarks-offline.json). The release verification records its exact source revision. Rust release build on Linux x86_64, AMD Ryzen AI 9 HX 370, 24 logical CPUs; Python 3.14.4. Temporary state used tmpfs, normal warm OS caches, default SQLite DELETE journal/EXTRA synchronous behavior and no pinned CPU/power settings. Compilation is excluded. No CPU governor, filesystem flush, memory or cold-start experiment was performed.
 
 | Operation | Run means, ms/command | Median of means, ms ↓ | Range, ms |
 |---|---|---:|---:|
@@ -51,7 +51,7 @@ Requires system Python and GNU `/usr/bin/time`, exclusively for this optional be
 
 Only full-to-full rows do equivalent work. Pagination deliberately selects 25 packages; summary does not verify materials or report history. Faster reduced work is **not** a safety-equivalent full-archive speedup. The results do not establish improved full-archive latency; retain unfavorable full-to-full samples rather than inferring a general optimization. Pages bound returned package count, not arbitrary per-package history or PDF size.
 
-This workload has no HTML, many attachments, repeated refusals or DSNs. It is not a memory ceiling, persistent-disk benchmark, concurrent-writer study or large-archive guarantee. All status rows can change between page invocations; keyset pagination is not a frozen multi-page snapshot. See [CLI rules](cli.md#archive-pages-060) and [maintenance](maintenance.md).
+This workload has no HTML, many attachments, repeated refusals or DSNs. It is not a memory ceiling, persistent-disk benchmark, concurrent-writer study or large-archive guarantee. All status rows can change between page invocations; keyset pagination is not a frozen multi-page snapshot. See [CLI rules](cli.md#archive-pages) and [maintenance](maintenance.md).
 
 ## Persistent-filesystem backup (0.7.0)
 
@@ -72,3 +72,5 @@ Requires Python 3.11+, GNU time and findmnt solely for the optional driver. Sele
 Latency includes CLI/GNU time startup and JSON parsing. Backup includes source validation, SQLite copy, destination validation/hashing, file/directory fsync and manifest publication. Verify includes manifest/hashes, database checks and full stored-material validation. RSS is GNU time's CLI-process peak, excluding the driver. Preparation is excluded. These repeated measurements describe one modest plain archive; no cache, HTML, attempts or reports are in this workload.
 
 This is persistent-filesystem behavior, not a power-cut or storage-firmware durability test. It does not establish cold-cache latency, concurrent-writer performance, an RSS ceiling or all larger archives. The separate deterministic fault tests cover process death, SQLite page exhaustion and per-process file-size quota; quota/EFBIG is not physical ENOSPC. Read locks can still delay writers, so quiesce active mail workers before operational backup. No comparison against another backup product was performed.
+
+Historical version rows are recorded local observations. Not every older binary/tag is distributed by this public repository; reproducing an old-versus-new comparison requires a separately obtained compatible binary. The current 0.7.1 preparation benchmark is reproducible from the published source/artifact. No old private Git identifiers or operational datasets are required.

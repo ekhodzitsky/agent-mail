@@ -4,7 +4,7 @@ Use the latest 0.7.x patch and matching optional adapters. Earlier patches do no
 
 ## Reporting
 
-Use GitHub's **Security → Advisories → Report a vulnerability** for private reporting. If unavailable, open only a request for a private security contact, without exploit details, correspondence, credentials or personal data. See [GitHub's reporting guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/report-privately).
+Use [Report a vulnerability](https://github.com/ekhodzitsky/agent-mail/security/advisories/new) for private reporting (GitHub sign-in required). If unavailable, open only a request for a private security contact, without exploit details, correspondence, credentials or personal data. See [GitHub's reporting guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/report-privately).
 
 Provide a synthetic reproducer, affected version/features/platform, expected versus observed behavior and impact. Do not send real resumes, messages, raw DSNs, credential-store data, private SQLite files or unredacted prepare/inspect output. No response-time or bounty commitment is made.
 

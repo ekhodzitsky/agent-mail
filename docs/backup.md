@@ -1,6 +1,6 @@
 # Private database snapshots
 
-Available in 0.6.0. `backup` copies the selected core database and, if present, its IMAP cache into a **new** private directory. It uses SQLite Backup API, not a raw live file copy. It never connects to SMTP/IMAP, retrieves credentials or restores a running installation.
+`backup` copies the selected core database and, if present, its IMAP cache into a **new** private directory. It uses SQLite Backup API, not a raw live file copy. It never connects to SMTP/IMAP, retrieves credentials or restores a running installation.
 
 ```sh
 agent-mailer backup --output /private/backups/snapshot-001 --json
