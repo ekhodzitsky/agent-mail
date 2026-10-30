@@ -6,6 +6,7 @@ User-visible changes are recorded here. Follow [versioning](VERSIONING.md); prod
 
 ### Documentation
 
+- Refocus the root README on sending from an existing mailbox, interrupted-agent recovery and a short prepare/review/send example with selected real JSON fields. Prioritize native installation, add agent onboarding, distinguish caller consent from CLI behavior and separate use cases from limitations.
 - Remove the native binary download-count badge and its explanatory text from the root README.
 
 ## 0.8.0 — 2026-10-30
