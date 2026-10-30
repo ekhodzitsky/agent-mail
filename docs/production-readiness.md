@@ -1,6 +1,6 @@
 # Supported production scope
 
-Agent Mailer 0.7.0 supports the documented Linux x86_64/glibc workflow on trusted local storage, with explicit owner authorization for real submission. The native Rust core needs no Node.js, Bun or Python. Optional desktop/IMAP adapters have separate prerequisites and permissions.
+Agent Mailer 0.7.1 supports the documented Linux x86_64/glibc workflow on trusted local storage, with explicit owner authorization for real submission. The native Rust core needs no Node.js, Bun or Python. Optional desktop/IMAP adapters have separate prerequisites and permissions.
 
 ## Evidence
 

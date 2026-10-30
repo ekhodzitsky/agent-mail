@@ -5,7 +5,7 @@ Agent Mailer is a local Rust CLI. Start with a synthetic package; configure a re
 ## Use the tool
 
 - [Offline setup diagnostics](preflight.md).
-- [First package without sending](../README.md#try-without-sending) and [installation/releases](releases.md).
+- [First package without sending](../README.md#quick-start) and [installation/releases](releases.md).
 - [Commands](cli.md), [agent workflow and operation keys](agent-workflow.md), [JSON fields and exit codes](json-contract.md).
 - [Synthetic local SMTP](local-testing.md); [provider scope](mailbox-target.md) and [Yandex setup](yandex-setup.md).
 - Optional [GNOME Keyring launcher](../integrations/gnome-keyring/README.md), [selected read-only IMAP DSN reader](../integrations/imap-dsn/README.md) and [portable agent skill](../skills/agent-mailer/SKILL.md).

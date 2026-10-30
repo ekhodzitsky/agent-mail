@@ -1,6 +1,6 @@
 # Installation and local releases
 
-Current public product version: 0.7.0. This repository starts from a reviewed source-only baseline. Use matching core/adapters. The repository is named Agent Mail; the executable/package remains agent-mailer for compatibility, without changing existing state or credential identities.
+Current public product version: 0.7.1. This repository starts from a reviewed source-only baseline. Use matching core/adapters. The repository is named Agent Mail; the executable/package remains agent-mailer for compatibility, without changing existing state or credential identities.
 
 ## Install from source
 
@@ -20,7 +20,7 @@ Download the native binary and SHA256SUMS from this repository’s current GitHu
 
 ```sh
 sha256sum --ignore-missing --check SHA256SUMS
-install -Dm755 agent-mailer-0.7.0-x86_64-unknown-linux-gnu "$HOME/.local/bin/agent-mailer"
+install -Dm755 agent-mailer-0.7.1-x86_64-unknown-linux-gnu "$HOME/.local/bin/agent-mailer"
 export PATH="$HOME/.local/bin:$PATH"
 agent-mailer --version
 ```

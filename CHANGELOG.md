@@ -4,6 +4,11 @@ User-visible changes are recorded here. Follow [versioning](VERSIONING.md); prod
 
 ## Unreleased
 
+## 0.7.1 — 2026-10-30
+
+- Align the root README with Root README standard v1: complete native installation/prepare/inspect/dry-run, explicit prerequisites and expected success, primary-source alternatives, current-version repeated measurements, accurate per-asset download badge and visible limitations.
+- Publish matching native/source/adapters from the independent reviewed source tree. Preserve runtime behavior, state/credential identities, dependencies and serialized contracts. Hosted CI remains disabled; no personal operational data is included.
+
 ## 0.7.0 — 2026-10-30
 
 ### Initial public source baseline

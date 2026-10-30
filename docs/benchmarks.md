@@ -15,13 +15,13 @@ Command times include process startup, SQLite open/validation, JSON serializatio
 
 ## Recorded results
 
-Agent Mailer 0.5.2 normalized production binary; SHA-256 and full driver output are recorded in [raw results](benchmarks-offline.json). The release verification records its exact source revision. Rust release build on Linux x86_64, AMD Ryzen AI 9 HX 370, 24 logical CPUs; Python 3.14.4. Temporary state used tmpfs, normal warm OS caches, default SQLite DELETE journal/EXTRA synchronous behavior and no pinned CPU/power settings. Compilation is excluded. No CPU governor, filesystem flush, memory or cold-start experiment was performed.
+Agent Mailer 0.7.1 normalized production binary; SHA-256 and full driver output are recorded in [raw results](benchmarks-offline.json). The release verification records its exact source revision. Rust release build on Linux x86_64, AMD Ryzen AI 9 HX 370, 24 logical CPUs; Python 3.14.4. Temporary state used tmpfs, normal warm OS caches, default SQLite DELETE journal/EXTRA synchronous behavior and no pinned CPU/power settings. Compilation is excluded. No CPU governor, filesystem flush, memory or cold-start experiment was performed.
 
 | Operation | Run means, ms/command | Median of means, ms ↓ | Range, ms |
 |---|---|---:|---:|
-| Prepare | 3.3022, 3.1728, 3.1814 | 3.1814 | 3.1728–3.3022 |
-| Inspect | 2.9071, 2.8814, 3.4806 | 2.9071 | 2.8814–3.4806 |
-| Dry-run | 3.5097, 2.7948, 3.7831 | 3.5097 | 2.7948–3.7831 |
+| Prepare | 3.4955, 3.4276, 3.3196 | 3.4276 | 3.3196–3.4955 |
+| Inspect | 3.4943, 3.2223, 3.0798 | 3.2223 | 3.0798–3.4943 |
+| Dry-run | 3.2977, 3.2308, 3.4651 | 3.2977 | 3.2308–3.4651 |
 
 All 60 preparations/reviews/dry-runs succeeded and all three archives remained byte-identical across dry-run. Values are rounded from driver JSON. No alternative was run, so no speedup or safety superiority is claimed. The [local validation suite](validation.md) separately exercises refusal, concurrency, crashes and immutable bytes; latency alone does not establish these guarantees.
 

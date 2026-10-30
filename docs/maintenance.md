@@ -22,10 +22,10 @@ The installed handbook’s Root README standard v1 and skeleton were reviewed, i
 | Standard check | Result and evidence |
 |---|---|
 | Purpose / hook | Pass: factual package/review/submission boundary and visible unknown/accepted limits |
-| First run | Pass: documented synthetic prepare/inspect succeeds; unset SMTP dry-run returns structured configuration/exit 3 without stderr. Installation is covered separately by the local gate. |
+| First run | Pass for the package workflow: documented synthetic prepare/inspect and configured dry-run succeed without mail network or attempts. The README includes native GitHub download/checksum/install commands; those are checked against public assets as part of publication. |
 | Alternatives | Pass for dated documentation comparison: primary msmtp/Himalaya sources; competitor runtime/retry guarantees explicitly not verified |
-| Measurements | Pass for the declared small offline workload only: reproducible repeated samples and unchanged dry-run archive. Persistent-disk, large-archive and competitor measurements remain absent. |
-| Badges | Partial: release/license/MSRV link to actual sources; local MSRV gate replaces hosted verification under owner policy. CI and coverage are unconfigured, so no fabricated indicators. Public download counts are not measured here; no fabricated count badge is included. |
+| Measurements | Pass for the declared 0.7.1 small offline workload only: reproducible repeated samples and unchanged dry-run archive. Persistent-disk, large-archive and competitor measurements remain absent. |
+| Badges | Partial: release/license/MSRV link to actual sources; local MSRV gate replaces hosted verification under owner policy. CI and coverage are unconfigured, so no fabricated indicators. The download badge reads cumulative GitHub downloads of the 0.7.1 native asset only; it is not a user/installation count. |
 | Constraints | Pass: consent, SMTP ambiguity, unencrypted trusted storage and adapter/runtime scope visible |
 | Presentation / links | Pass for source review and local checks: concise English root, detailed reference links, command/schema parity. No browser-rendered visual review was available. |
 
