@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="88" height="20" role="img" aria-label="MSRV: 1.88">
+  <title>MSRV: 1.88</title>
+  <rect width="88" height="20" rx="3" fill="#555"/>
+  <path fill="#007ec6" d="M44 0h41q3 0 3 3v14q0 3-3 3H44z"/>
+  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans Mono,monospace" font-size="11">
+    <text x="22" y="14">MSRV</text>
+    <text x="66" y="14">1.88</text>
+  </g>
+</svg>

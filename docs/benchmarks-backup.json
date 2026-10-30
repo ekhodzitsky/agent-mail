@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "version": "agent-mailer 0.7.0",
+  "binary_sha256": "9c32fd936e30abfe9e382d4ec49f6bff7c84429a36a1164fff9e4c3d65f85ea1",
+  "filesystem": "ext4",
+  "packages": 500,
+  "pdf_bytes": 262144,
+  "source_database_bytes": 311963648,
+  "runs": 3,
+  "source_unchanged": true,
+  "network_used": false,
+  "results": {
+    "backup": {
+      "samples": [
+        {
+          "ms": 864.3031329993391,
+          "peak_rss_kib": 12584
+        },
+        {
+          "ms": 863.7204709957587,
+          "peak_rss_kib": 12972
+        },
+        {
+          "ms": 874.3227859959006,
+          "peak_rss_kib": 12568
+        }
+      ],
+      "median_ms": 864.3031329993391,
+      "median_peak_rss_kib": 12584
+    },
+    "verify": {
+      "samples": [
+        {
+          "ms": 420.04868300864473,
+          "peak_rss_kib": 10832
+        },
+        {
+          "ms": 413.9806220046012,
+          "peak_rss_kib": 10492
+        },
+        {
+          "ms": 416.0647410026286,
+          "peak_rss_kib": 10648
+        }
+      ],
+      "median_ms": 416.0647410026286,
+      "median_peak_rss_kib": 10648
+    }
+  }
+}

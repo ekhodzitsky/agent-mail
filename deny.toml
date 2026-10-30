@@ -1,0 +1,13 @@
+# Explicit license policy for the locked graph, including test dependencies.
+[licenses]
+include-dev = true
+allow = ["MIT", "Apache-2.0", "ISC", "BSD-3-Clause", "Unicode-3.0", "Zlib", "CDLA-Permissive-2.0", "0BSD"]
+confidence-threshold = 0.95
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+[advisories]
+ignore = []

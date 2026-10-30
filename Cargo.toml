@@ -1,0 +1,36 @@
+[package]
+name = "agent-mailer"
+version = "0.7.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Email CLI for AI agents: immutable packages and conservative SMTP submission"
+repository = "https://github.com/ekhodzitsky/agent-mail"
+license = "MIT"
+publish = false
+
+[features]
+default = []
+test-smtp = []
+
+[dependencies]
+mailparse = "0.18"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive", "env"] }
+fs2 = "0.4"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls", "hostname"] }
+rusqlite = { version = "0.38", features = ["bundled", "backup"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+toml = "0.9"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
+base64 = "0.23"
+rcgen = "0.14"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rusqlite = { version = "0.38", features = ["bundled", "hooks"] }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1", features = ["fs"] }

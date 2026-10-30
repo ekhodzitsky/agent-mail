@@ -1,0 +1,9 @@
+# Copy to the private state directory as keyring.toml, mode 0600.
+# Match config.toml; account is the stable keyring lookup key.
+sender = "sender@example.org"
+username = "login@example.org"
+host = "smtp.example.org"
+port = 465
+security = "tls"
+password_env = "AGENT_MAILER_SMTP_PASSWORD"
+account = "example-account"

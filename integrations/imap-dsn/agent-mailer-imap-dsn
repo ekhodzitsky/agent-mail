@@ -1,0 +1,562 @@
+#!/usr/bin/python3
+"""Optional, on-demand IMAP DSN reader. No SMTP or mailbox mutations."""
+import argparse
+import hashlib
+import imaplib
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import sqlite3
+import ssl
+import stat
+import subprocess
+import sys
+import tempfile
+import threading
+import tomllib
+import uuid
+from dataclasses import dataclass
+import datetime
+from email import policy
+from email.parser import BytesHeaderParser
+
+MAX_REPORT = 1024 * 1024
+LEDGER_SQL = """
+CREATE TABLE reports(remote_sha256 TEXT PRIMARY KEY, package_id TEXT NOT NULL, attempt_id TEXT NOT NULL, raw_sha256 TEXT NOT NULL, report_id TEXT NOT NULL);
+CREATE TRIGGER reports_no_update BEFORE UPDATE ON reports BEGIN SELECT RAISE(ABORT,'immutable'); END;
+CREATE TRIGGER reports_no_delete BEFORE DELETE ON reports BEGIN SELECT RAISE(ABORT,'immutable'); END;
+"""
+
+
+class Failure(Exception):
+    def __init__(self, code="integration_failed", exit_code=7):
+        self.code, self.exit_code = code, exit_code
+
+
+def digest(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+
+def emit(result=None, failure=None):
+    value = {"schema_version": 1, "ok": failure is None, "result": result,
+             "error": None if failure is None else {
+                 "code": failure.code,
+                 "message": "IMAP DSN operation failed; inspect configuration and local status. No send was performed."}}
+    try:
+        raw = (json.dumps(value) + "\n").encode()
+        while raw:
+            count = os.write(sys.stdout.fileno(), raw)
+            if not count:
+                raise OSError()
+            raw = raw[count:]
+    except OSError:
+        return 7
+    return 0 if failure is None else failure.exit_code
+
+
+def private_read(path):
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as source:
+        info = os.fstat(source.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_nlink != 1:
+            raise Failure("configuration", 3)
+        raw = source.read(MAX_REPORT + 1)
+        if len(raw) > MAX_REPORT:
+            raise Failure("input_limit", 3)
+        return raw
+
+
+def credential_env_name(name):
+    # A secret must never become loader/interpreter/locale configuration.
+    reserved = {"HOME", "PATH", "USER", "LOGNAME", "SHELL", "ENV", "BASH_ENV", "IFS", "CDPATH",
+                "LANG", "LANGUAGE", "TZ", "TMPDIR", "GCONV_PATH", "LOCPATH", "GLIBC_TUNABLES",
+                "MALLOC_TRACE", "SSLKEYLOGFILE", "RUST_BACKTRACE", "RUST_LIB_BACKTRACE", "RUST_LOG", "AGENT_MAILER_HOME"}
+    return (isinstance(name, str) and bool(name) and "=" not in name and "\x00" not in name
+            and name not in reserved
+            and not name.startswith(("LD_", "DYLD_", "PYTHON", "LC_", "SSL_CERT_", "OPENSSL_")))
+
+
+def config(path):
+    try:
+        cfg = tomllib.loads(private_read(path).decode("utf-8"))
+    except (OSError, ValueError):
+        raise Failure("configuration", 3) from None
+    allowed = {"host", "port", "username", "password_env", "mailbox", "home", "binary",
+               "timeout_seconds", "total_timeout_seconds", "max_messages"}
+    if cfg.keys() - allowed:
+        raise Failure("configuration", 3)
+    defaults = {"port": 993, "mailbox": "INBOX", "timeout_seconds": 10,
+                "total_timeout_seconds": 60, "max_messages": 20,
+                "home": str(Path.home() / ".local/share/agent-mailer"),
+                "binary": str(Path.home() / ".local/bin/agent-mailer")}
+    cfg = defaults | cfg
+    for name in ("host", "username", "password_env", "mailbox", "home", "binary"):
+        value = cfg.get(name)
+        if not isinstance(value, str) or not value or len(value) > 4096 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+            raise Failure("configuration", 3)
+    for name, maximum in (("port", 65535), ("timeout_seconds", 60),
+                          ("total_timeout_seconds", 300), ("max_messages", 100)):
+        if type(cfg[name]) is not int or not 1 <= cfg[name] <= maximum:
+            raise Failure("configuration", 3)
+    if not cfg["mailbox"].isascii() or not cfg["username"].isascii() or not re.fullmatch(r"[A-Z_][A-Z0-9_]*", cfg["password_env"]):
+        raise Failure("configuration", 3)
+    if not credential_env_name(cfg["password_env"]):
+        raise Failure("configuration", 3)
+    if not Path(cfg["home"]).is_absolute() or not Path(cfg["binary"]).is_absolute():
+        raise Failure("configuration", 3)
+    return cfg
+
+
+def core(cfg, *args):
+    env = os.environ.copy()
+    env.pop(cfg["password_env"], None)
+    result = subprocess.run([cfg["binary"], "--home", cfg["home"], "--json", *args],
+                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, timeout=15, check=False, env=env)
+    value = json.loads(result.stdout)
+    if value.get("schema_version") != 1:
+        raise Failure("core_failed", 7)
+    if result.returncode or value.get("ok") is not True:
+        code = value.get("error", {}).get("code")
+        allowed = {"validation", "input_limit", "integrity", "dsn_binding", "busy", "not_found", "storage_schema"}
+        exit_code = result.returncode if result.returncode in range(2, 10) else 7
+        raise Failure(code if code in allowed else "core_failed", exit_code)
+    return value["result"]
+
+
+def ledger_state(db, shape):
+    actual = db.execute("SELECT type,name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").fetchall()
+    identity = (db.execute("PRAGMA application_id").fetchone()[0], db.execute("PRAGMA user_version").fetchone()[0])
+    if not actual:
+        if identity != (0, 0):
+            raise Failure("ledger_schema", 9)
+        return True
+    if actual != shape or identity != (1296974931, 1):
+        raise Failure("ledger_schema", 9)
+    return False
+
+
+def ledger(home):
+    folder = Path(home)
+    if folder.is_symlink() or not folder.is_dir() or folder.stat().st_mode & 0o077:
+        raise Failure("configuration", 3)
+    path = folder / "imap-dsn.sqlite3"
+    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise Failure()
+        os.fchmod(fd, 0o600)
+    finally:
+        os.close(fd)
+    db = sqlite3.connect(str(path.resolve()), timeout=5)
+    try:
+        expected = sqlite3.connect(":memory:")
+        try:
+            expected.executescript(LEDGER_SQL)
+            shape = expected.execute("SELECT type,name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").fetchall()
+        finally:
+            expected.close()
+        # Reject foreign/future/altered caches before persistent journal changes.
+        # Recheck under the write lock because another opener may initialize it.
+        db.execute("BEGIN")
+        ledger_state(db, shape)
+        db.commit()
+        db.execute("PRAGMA synchronous=EXTRA")
+        db.execute("PRAGMA journal_mode=DELETE")
+        db.execute("BEGIN IMMEDIATE")
+        if ledger_state(db, shape):
+            # execute separately: executescript would commit our transaction early.
+            db.execute("CREATE TABLE reports(remote_sha256 TEXT PRIMARY KEY, package_id TEXT NOT NULL, attempt_id TEXT NOT NULL, raw_sha256 TEXT NOT NULL, report_id TEXT NOT NULL)")
+            db.execute("CREATE TRIGGER reports_no_update BEFORE UPDATE ON reports BEGIN SELECT RAISE(ABORT,'immutable'); END")
+            db.execute("CREATE TRIGGER reports_no_delete BEFORE DELETE ON reports BEGIN SELECT RAISE(ABORT,'immutable'); END")
+            db.execute("PRAGMA application_id=1296974931")  # MNDS
+            db.execute("PRAGMA user_version=1")
+        db.commit()
+        return db
+    except BaseException:
+        db.close()
+        raise
+
+
+class BoundedIMAP(imaplib.IMAP4_SSL):
+    def __init__(self, cfg):
+        self.remaining = (MAX_REPORT + 65536) * cfg["max_messages"] + MAX_REPORT
+        super().__init__(cfg["host"], cfg["port"], ssl_context=ssl.create_default_context(),
+                         timeout=cfg["timeout_seconds"])
+        self.debug = 0
+
+    def read(self, size):
+        if size < 0 or size > MAX_REPORT or size > self.remaining:
+            raise Failure("input_limit", 3)
+        value = super().read(size)
+        self.remaining -= len(value)
+        return value
+
+    def readline(self):
+        value = super().readline()
+        self.remaining -= len(value)
+        if self.remaining < 0:
+            raise Failure("input_limit", 3)
+        return value
+
+
+def number(value):
+    if isinstance(value, bytes):
+        value = value.decode("ascii")
+    if not re.fullmatch(r"[0-9]{1,10}", value) or not 1 <= int(value) <= 4294967295:
+        raise Failure("imap_response", 8)
+    return str(int(value))
+
+
+def ok(response, code="imap_response"):
+    typ, data = response
+    if typ != "OK":
+        if code == "imap_search":
+            # Classify a fixed vocabulary; never expose server prose or values.
+            raw = b" ".join(v for v in data if isinstance(v, bytes)).lower()
+            for reason, needles in (("unsupported", (b"not supported", b"unsupported")),
+                                    ("charset", (b"badcharset", b"charset")),
+                                    ("limited", (b"[limit]", b"rate limit", b"too many")),
+                                    ("unavailable", (b"[unavailable]", b"temporarily unavailable"))):
+                if any(needle in raw for needle in needles):
+                    raise Failure("imap_search_" + reason, 8)
+        raise Failure(code, 8)
+    return data
+
+
+def metadata(data, uid):
+    raw = b" ".join(part[0] if isinstance(part, tuple) else part for part in data if part is not None)
+    identities = re.findall(rb"\bUID ([0-9]+)\b", raw)
+    if len(identities) != 1 or number(identities[0]) != uid:
+        raise Failure("imap_binding", 5)
+    return raw
+
+
+def preflight(cfg, package, attempt, by_headers=False):
+    state = core(cfg, "status", package)
+    if not any(a["attempt_id"] == attempt and a["outcome"] in ("accepted", "unknown") for a in state["attempts"]):
+        raise Failure("dsn_binding", 5)
+    if by_headers:
+        if len(state["attempts"]) != 1:
+            raise Failure("dsn_binding", 5)
+    elif not any(e["attempt_id"] == attempt and e["kind"] == "parameters_about_to_send"
+               and e["details"] == {"dsn_parameters": True} for e in state["dsn"]["events"]):
+        raise Failure("dsn_binding", 5)
+    password = os.environ.get(cfg["password_env"])
+    if not password or len(password.encode()) > 2048 or "\0" in password:
+        raise Failure("configuration", 3)
+    return password
+
+
+def verify_message_id(raw, message_id):
+    header_raw = re.split(rb"\r?\n\r?\n", raw, maxsplit=1)[0]
+    if len(header_raw) > 8192:
+        raise Failure("input_limit", 3)
+    header = BytesHeaderParser(policy=policy.default).parsebytes(header_raw + b"\r\n\r\n")
+    identities = header.get_all("Message-ID", [])
+    if header.defects or len(identities) != 1 or str(identities[0]).strip() != message_id:
+        raise Failure("imap_report_identity", 5)
+
+
+def verify_report_header(session, uid, message_id):
+    data = ok(session.uid("FETCH", uid, "(UID BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])"), "imap_fetch_header")
+    metadata(data, uid)
+    parts = [part[1] for part in data if isinstance(part, tuple)]
+    if len(parts) != 1 or len(parts[0]) > 8192:
+        raise Failure("input_limit", 3)
+    verify_message_id(parts[0], message_id)
+
+
+def recent_report_uids(session, message_id):
+    _, values = session.response("UIDNEXT")
+    if not values or len(values) != 1:
+        raise Failure("imap_response", 8)
+    next_uid = int(number(values[0]))
+    if next_uid == 1:
+        return [], 0
+    first, last = max(1, next_uid - 20), next_uid - 1
+    data = ok(session.uid("FETCH", f"{first}:{last}", "(UID BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])"), "imap_fetch_header")
+    groups = []
+    for item in data:
+        if isinstance(item, tuple):
+            if len(groups) >= 20 or len(item[0]) > 4096 or len(item[1]) > 8192:
+                raise Failure("input_limit", 3)
+            groups.append(([item[0]], item[1]))
+        elif groups and isinstance(item, bytes):
+            if len(groups[-1][0]) >= 8 or len(item) > 4096:
+                raise Failure("input_limit", 3)
+            groups[-1][0].append(item)
+        elif item not in (None, b""):
+            raise Failure("imap_binding", 5)
+    matches, seen = [], set()
+    for fragments, raw in groups:
+        # UID may precede or follow the header literal in a FETCH response.
+        identities = re.findall(rb"\bUID ([0-9]+)\b", b" ".join(fragments))
+        if len(identities) != 1:
+            raise Failure("imap_binding", 5)
+        uid = number(identities[0])
+        if uid in seen or not first <= int(uid) <= last or len(seen) >= 20:
+            raise Failure("imap_binding", 5)
+        seen.add(uid)
+        if len(raw) > 8192:
+            raise Failure("input_limit", 3)
+        try:
+            verify_message_id(raw, message_id)
+        except Failure as failure:
+            if failure.code != "imap_report_identity":
+                raise
+        else:
+            matches.append(uid)
+    return matches, len(seen)
+
+
+@dataclass(frozen=True)
+class Retrieval:
+    package: str
+    attempt: str
+    uids: tuple[str, ...] = ()
+    message_id: str | None = None
+    search: str = "header"
+    date: str | None = None
+    from_address: str | None = None
+    by_headers: bool = False
+    expected_uidvalidity: str | None = None
+
+
+def worker(cfg, request):
+    package, attempt = request.package, request.attempt
+    password = preflight(cfg, package, attempt, request.by_headers)
+    db = ledger(cfg["home"])
+    session = None
+    try:
+        session = BoundedIMAP(cfg)
+        ok(session.login(cfg["username"], password), "imap_auth")
+        mailbox = '"' + cfg["mailbox"].replace('\\', '\\\\').replace('"', '\\"') + '"'
+        selected_info = ok(session.select(mailbox, readonly=True), "imap_mailbox")
+        if len(selected_info) != 1 or not isinstance(selected_info[0], bytes) or not re.fullmatch(rb"[0-9]{1,10}", selected_info[0]):
+            raise Failure("imap_response", 8)
+        mailbox_messages = int(selected_info[0])
+        _, validity = session.response("UIDVALIDITY")
+        if not validity or len(validity) != 1:
+            raise Failure("imap_response", 8)
+        validity = number(validity[0])
+        if request.expected_uidvalidity is not None and validity != number(request.expected_uidvalidity):
+            raise Failure("imap_uidvalidity", 5)
+        scanned_headers = 0
+        if request.search == "recent-uids":
+            uids, scanned_headers = recent_report_uids(session, request.message_id)
+        elif request.uids:
+            uids = list(dict.fromkeys(number(uid) for uid in request.uids))
+        else:
+            if request.message_id:
+                term = '"' + request.message_id + '"'
+                if request.search == "sender-date":
+                    months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                    date = datetime.date.fromisoformat(request.date)
+                    search = ("SENTON", f"{date.day:02d}-{months[date.month - 1]}-{date.year:04d}", "FROM", '"' + request.from_address + '"')
+                else:
+                    search = ("HEADER", '"Message-ID"', term) if request.search == "header" else ("TEXT", term)
+            else:
+                search = ("BODY", '"' + package + "." + attempt + '"')
+            data = ok(session.uid("SEARCH", None, *search), "imap_search")
+            if len(data) != 1 or not isinstance(data[0], bytes) or len(data[0]) > 65536:
+                raise Failure("input_limit", 3)
+            uids = list(dict.fromkeys(number(uid) for uid in data[0].split()))
+        if len(uids) > 10000:
+            raise Failure("input_limit", 3)
+        if request.search == "sender-date" and len(uids) > cfg["max_messages"]:
+            # A broader selector must not silently expand the owner's read scope.
+            raise Failure("candidate_limit", 3)
+        records, cached, remaining = [], 0, 0
+        for uid in uids:
+            remote = digest(json.dumps([cfg["host"], cfg["port"], cfg["username"], cfg["mailbox"], validity, uid]).encode())
+            prior = db.execute("SELECT package_id,attempt_id,raw_sha256,report_id FROM reports WHERE remote_sha256=?", (remote,)).fetchone()
+            if prior:
+                if prior[:2] != (package, attempt):
+                    raise Failure("ledger_binding", 5)
+                verified = core(cfg, "inspect-dsn", prior[3])["record"]
+                if (verified["package_id"], verified["attempt_id"], verified["sha256"]) != prior[:3]:
+                    raise Failure("ledger_binding", 5)
+                if verified.get("correlation", "envid") != ("original_headers" if request.by_headers else "envid"):
+                    raise Failure("ledger_binding", 5)
+                if request.message_id:
+                    verify_report_header(session, uid, request.message_id)
+                cached += 1
+                continue
+            if len(records) >= cfg["max_messages"]:
+                remaining += 1
+                continue
+            size_meta = metadata(ok(session.uid("FETCH", uid, "(UID RFC822.SIZE)"), "imap_fetch_size"), uid)
+            sizes = re.findall(rb"\bRFC822.SIZE ([0-9]+)\b", size_meta)
+            if len(sizes) != 1 or not 1 <= int(sizes[0]) <= MAX_REPORT:
+                raise Failure("input_limit", 3)
+            if request.message_id:
+                verify_report_header(session, uid, request.message_id)
+            data = ok(session.uid("FETCH", uid, "(UID BODY.PEEK[])"), "imap_fetch_body")
+            metadata(data, uid)
+            bodies = [part[1] for part in data if isinstance(part, tuple)]
+            if len(bodies) != 1 or len(bodies[0]) != int(sizes[0]):
+                raise Failure("imap_body_size", 8)
+            raw = bodies[0]
+            if request.message_id:
+                verify_message_id(raw, request.message_id)
+            with tempfile.TemporaryDirectory(prefix="agent-mailer-dsn-") as directory:
+                path = Path(directory) / "report.eml"
+                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "wb") as target:
+                    target.write(raw)
+                flags = ["--correlate-by-headers"] if request.by_headers else []
+                imported = core(cfg, "import-dsn", package, "--attempt-id", attempt, "--file", str(path), *flags)
+            raw_hash = digest(raw)
+            row = (package, attempt, raw_hash, imported["report_id"])
+            with db:
+                db.execute("INSERT OR IGNORE INTO reports VALUES(?,?,?,?,?)", (remote, *row))
+                if db.execute("SELECT package_id,attempt_id,raw_sha256,report_id FROM reports WHERE remote_sha256=?", (remote,)).fetchone() != row:
+                    raise Failure("ledger_binding", 5)
+            records.append({"uid": uid, "uidvalidity": validity, "sha256": raw_hash,
+                            "report_id": imported["report_id"], "already_recorded": imported["already_recorded"]})
+        return {"package_id": package, "attempt_id": attempt, "records": records,
+                "cached": cached, "remaining": remaining, "network_used": True,
+                "selection": "uid" if request.uids else ("message-id-" + request.search if request.message_id else "envid-body"),
+                "matched_candidates": len(uids), "scanned_headers": scanned_headers, "mailbox_messages": mailbox_messages, "uidvalidity": validity,
+                "correlation": "original_headers" if request.by_headers else "envid",
+                "mailbox_modified": False, "smtp_state_modified": False, "retry_authorized": False}
+    finally:
+        db.close()
+        if session is not None:
+            # No CLOSE (can expunge), STORE, APPEND or SMTP. Drop the TLS socket.
+            session.shutdown()
+
+
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        raise Failure("usage", 2)
+
+
+def stop_worker_group(pid):
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
+def worker_deadline():
+    # The public supervisor starts this worker in its own session. Never signal
+    # an inherited terminal/process group for a directly invoked internal worker.
+    if os.getpgrp() == os.getpid() and os.getsid(0) == os.getpid():
+        stop_worker_group(os.getpid())
+    os._exit(8)
+
+
+def supervised_worker(args, timeout):
+    with subprocess.Popen([sys.executable, "-B", str(Path(__file__).resolve()), "--worker", *args],
+                          stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL, start_new_session=True) as child:
+        try:
+            raw, _ = child.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            stop_worker_group(child.pid)
+            child.communicate()
+            raise Failure("integration_timeout", 8) from None
+        if child.returncode:
+            # Cover an externally killed worker as well as its own watchdog;
+            # core status/import descendants must not outlive the failed call.
+            stop_worker_group(child.pid)
+        return child.returncode, raw
+
+
+def main(args):
+    parser = Parser(add_help=False, allow_abbrev=False, description="Fetch selected DSN observations through verified IMAP TLS; never send mail.")
+    parser.add_argument("--config", required=True, type=Path)
+    parser.add_argument("--package-id", required=True)
+    parser.add_argument("--attempt-id", required=True)
+    parser.add_argument("--uid", action="append", default=[])
+    parser.add_argument("--expected-uidvalidity", help="Require the selected mailbox UIDVALIDITY before any FETCH; only with --uid.")
+    parser.add_argument("--report-message-id", help="Select and verify the notification Message-ID; search only when --uid is absent.")
+    parser.add_argument("--report-search", choices=("header", "text", "sender-date", "recent-uids"), help="Select a search method for --report-message-id; default: header. No automatic fallback.")
+    parser.add_argument("--report-date", help="Exact ISO Date-header day for sender-date selection.")
+    parser.add_argument("--report-from", help="Exact ASCII sender address for sender-date selection.")
+    parser.add_argument("--correlate-by-headers", action="store_true", help="Explicit selected-message no-ENVID import; requires --report-message-id and one attempt.")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="Validate local binding/configuration without IMAP or cache writes.")
+    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
+    if "--help" in args:
+        return emit({"help": parser.format_help()})
+    options = parser.parse_args(args)
+    try:
+        package, attempt = str(uuid.UUID(options.package_id)), str(uuid.UUID(options.attempt_id))
+    except ValueError:
+        raise Failure("validation", 3) from None
+    if package != options.package_id or attempt != options.attempt_id or len(options.uid) > 100:
+        raise Failure("validation", 3)
+    if options.report_search and not options.report_message_id:
+        raise Failure("validation", 3)
+    if options.report_search == "sender-date":
+        try:
+            date = datetime.date.fromisoformat(options.report_date or "")
+        except ValueError:
+            raise Failure("validation", 3) from None
+        if date.isoformat() != options.report_date or not options.report_from or len(options.report_from) > 254 or not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+", options.report_from):
+            raise Failure("validation", 3)
+    elif options.report_date is not None or options.report_from is not None:
+        raise Failure("validation", 3)
+    for uid in options.uid:
+        try:
+            number(uid)
+        except Failure:
+            raise Failure("validation", 3) from None
+    if options.report_message_id is not None and not re.fullmatch(r"<[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+>", options.report_message_id):
+        raise Failure("validation", 3)
+    if options.report_message_id is not None and len(options.report_message_id) > 998:
+        raise Failure("input_limit", 3)
+    if options.correlate_by_headers and not options.report_message_id:
+        raise Failure("validation", 3)
+    if options.uid and options.report_search:
+        raise Failure("validation", 3)
+    if options.uid and options.report_message_id and options.expected_uidvalidity is None:
+        raise Failure("validation", 3)
+    if options.expected_uidvalidity is not None:
+        if not options.uid:
+            raise Failure("validation", 3)
+        try:
+            number(options.expected_uidvalidity)
+        except Failure:
+            raise Failure("validation", 3) from None
+    cfg = config(options.config)
+    if options.dry_run:
+        preflight(cfg, package, attempt, options.correlate_by_headers)
+        ssl.create_default_context()
+        return emit({"ready": True, "network_used": False, "mailbox_modified": False,
+                     "smtp_state_modified": False, "retry_authorized": False})
+    if options.worker:
+        watchdog = threading.Timer(cfg["total_timeout_seconds"], worker_deadline)
+        watchdog.daemon = True
+        watchdog.start()
+        return emit(worker(cfg, Retrieval(
+            package=package, attempt=attempt, uids=tuple(options.uid),
+            message_id=options.report_message_id, search=options.report_search or "header",
+            date=options.report_date, from_address=options.report_from,
+            by_headers=options.correlate_by_headers, expected_uidvalidity=options.expected_uidvalidity)))
+    returncode, raw = supervised_worker(args, cfg["total_timeout_seconds"])
+    if returncode in (8, -signal.SIGKILL) and not raw:
+        raise Failure("integration_timeout", 8)
+    value = json.loads(raw)
+    if value.get("schema_version") != 1:
+        raise Failure()
+    if value.get("ok") is not True:
+        code = value.get("error", {}).get("code", "integration_failed")
+        raise Failure(code, returncode or 7)
+    return emit(value["result"])
+
+
+if __name__ == "__main__":
+    try:
+        code = main(sys.argv[1:])
+    except Failure as failure:
+        code = emit(failure=failure)
+    except Exception:
+        code = emit(failure=Failure())
+    sys.exit(code)

@@ -1,0 +1,379 @@
+#!/usr/bin/python3
+"""Optional desktop adapter; the Rust CLI has no Python dependency."""
+import json
+import multiprocessing
+import stat
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tomllib
+import uuid
+import re
+import datetime
+
+ACCOUNT = "sender@example.org"  # Test defaults; runtime requires private binding.
+LOGIN = "login@example.org"
+HOST = "smtp.yandex.ru"
+PORT = 465
+SECURITY = "tls"
+PASSWORD_ENV = "AGENT_MAILER_SMTP_PASSWORD"
+ATTRS = {"application": "agent-mailer", "account": ACCOUNT}
+
+
+def emit(value, code=0):
+    try:
+        data = (json.dumps(value) + "\n").encode("utf-8")
+        while data:
+            written = os.write(sys.stdout.fileno(), data)
+            if written == 0:
+                raise OSError()
+            data = data[written:]
+    except OSError:
+        return 7
+    return code
+
+
+def fail():
+    return emit({"schema_version": 1, "ok": False, "result": None,
+                 "error": {"code": "keyring_unavailable", "message":
+                           "Unlock the desktop keyring and configure the application password locally"}}, 3)
+
+
+def retrieve(Secret, schema):
+    # Search metadata without UNLOCK: never prompt in agent mode.
+    service = Secret.Service.get_sync(Secret.ServiceFlags.OPEN_SESSION, None)
+    items = service.search_sync(schema, ATTRS, Secret.SearchFlags.ALL, None)
+    if len(items) != 1 or items[0].get_locked():
+        raise ValueError("Unavailable or ambiguous item")
+    items[0].load_secret_sync(None)
+    value = items[0].get_secret()
+    password = value.get_text() if value else None
+    if not password:
+        raise ValueError("Empty credential")
+    return password
+
+
+def secret_api():
+    import gi
+    gi.require_version("Secret", "1")
+    from gi.repository import Secret
+    schema = Secret.Schema.new("org.agent_mailer.SMTP", Secret.SchemaFlags.NONE,
+                               {key: Secret.SchemaAttributeType.STRING for key in ATTRS})
+    return Secret, schema
+
+
+def probe_item(Secret, schema):
+    # Metadata only: no secret-transfer session, UNLOCK or LOAD_SECRETS flags.
+    try:
+        service = Secret.Service.get_sync(Secret.ServiceFlags.NONE, None)
+        items = service.search_sync(schema, ATTRS, Secret.SearchFlags.ALL, None)
+        if not items:
+            return "missing"
+        if len(items) != 1:
+            return "ambiguous"
+        return "locked" if items[0].get_locked() else "available"
+    except Exception:
+        return "session_unavailable"
+
+
+def probe_backend():
+    try:
+        Secret, schema = secret_api()
+    except Exception:
+        return "backend_unavailable"
+    return probe_item(Secret, schema)
+
+
+def keyring_worker(connection, operation, password):
+    """Only a private pipe carries results; no secret-bearing stdout/stderr."""
+    try:
+        with open(os.devnull, "wb") as discard:
+            os.dup2(discard.fileno(), 1)
+            os.dup2(discard.fileno(), 2)
+        if operation == "probe":
+            connection.send((True, probe_backend()))
+            return
+        Secret, schema = secret_api()
+        if operation == "lookup":
+            result = retrieve(Secret, schema)
+        elif operation == "store":
+            result = Secret.password_store_sync(schema, ATTRS, Secret.COLLECTION_DEFAULT,
+                                                "Agent Mailer SMTP", password, None)
+            if not result:
+                raise ValueError()
+        else:
+            raise ValueError()
+        if isinstance(result, str) and len(result.encode("utf-8")) > 2048:
+            raise ValueError()
+        connection.send((True, result))
+    except Exception:
+        connection.send((False, None))
+    finally:
+        connection.close()
+
+
+def keyring_operation(operation, password=None, timeout=30):
+    # A Python signal cannot reliably interrupt a blocked native GLib call.
+    # Isolate it so the parent can enforce a deadline and reap the worker.
+    context = multiprocessing.get_context("fork")
+    receiver, sender = context.Pipe(duplex=False)
+    worker = context.Process(target=keyring_worker, args=(sender, operation, password), daemon=True)
+    try:
+        worker.start()
+        sender.close()
+        worker.join(timeout)
+        if worker.is_alive():
+            raise TimeoutError()
+        if worker.exitcode != 0 or not receiver.poll(0):
+            raise ValueError()
+        ok, result = receiver.recv()
+        if not ok:
+            raise ValueError()
+        return result
+    finally:
+        receiver.close()
+        sender.close()
+        if worker.pid is not None:
+            worker.join(0.1)
+            if worker.is_alive():
+                worker.terminate()
+                worker.join(1)
+            if worker.is_alive():
+                worker.kill()
+                worker.join()
+            worker.close()
+
+
+def read_config(path):
+    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(fd, "rb") as source:
+        info = os.fstat(source.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_nlink != 1:
+            raise ValueError()
+        raw = source.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            raise ValueError()
+    return tomllib.loads(raw.decode("utf-8"))
+
+
+def credential_env_name(name):
+    # A secret must never become loader/interpreter/locale configuration.
+    reserved = {"HOME", "PATH", "USER", "LOGNAME", "SHELL", "ENV", "BASH_ENV", "IFS", "CDPATH",
+                "LANG", "LANGUAGE", "TZ", "TMPDIR", "GCONV_PATH", "LOCPATH", "GLIBC_TUNABLES",
+                "MALLOC_TRACE", "SSLKEYLOGFILE", "RUST_BACKTRACE", "RUST_LIB_BACKTRACE", "RUST_LOG", "AGENT_MAILER_HOME"}
+    return (isinstance(name, str) and bool(name) and "=" not in name and "\x00" not in name
+            and name not in reserved
+            and not name.startswith(("LD_", "DYLD_", "PYTHON", "LC_", "SSL_CERT_", "OPENSSL_")))
+
+
+def configure_binding(home):
+    global ACCOUNT, LOGIN, HOST, PORT, SECURITY, PASSWORD_ENV, ATTRS
+    binding = read_config(home / "keyring.toml")
+    required = ["sender", "username", "host", "account", "password_env"]
+    if any(not isinstance(binding.get(k), str) or not binding[k].strip() for k in required):
+        raise ValueError()
+    if binding.get("security") not in ("tls", "starttls") or not isinstance(binding.get("port"), int) or not 1 <= binding["port"] <= 65535:
+        raise ValueError()
+    if not credential_env_name(binding["password_env"]):
+        raise ValueError()
+    ACCOUNT, LOGIN, HOST = binding["sender"], binding["username"], binding["host"]
+    PORT, SECURITY, PASSWORD_ENV = binding["port"], binding["security"], binding["password_env"]
+    ATTRS = {"application": "agent-mailer", "account": binding["account"]}
+
+
+def validate_run(args, home):
+    if any(arg == "--config" or arg.startswith("--config=") or
+           arg == "--home" or arg.startswith("--home=") for arg in args):
+        raise ValueError()
+    config = home / "config.toml"
+    cfg = read_config(config)
+    smtp = cfg.get("smtp", {})
+    if not (cfg.get("sender") == ACCOUNT and smtp.get("username") == LOGIN
+            and smtp.get("host") == HOST and smtp.get("port") == PORT
+            and smtp.get("security") == SECURITY
+            and smtp.get("password_env") == PASSWORD_ENV):
+        raise ValueError()
+    return config
+
+
+def validate_imap(args, home):
+    # A narrow argument surface prevents config/worker/destination redirection.
+    seen = set()
+    uids = 0
+    index = 0
+    while index < len(args):
+        option = args[index]
+        if option in ("--dry-run", "--json", "--correlate-by-headers") and option not in seen:
+            index += 1
+        elif option in ("--package-id", "--attempt-id", "--uid", "--report-message-id", "--report-search", "--report-date", "--report-from", "--expected-uidvalidity") and index + 1 < len(args):
+            value = args[index + 1]
+            if option == "--uid":
+                uids += 1
+                if not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= 4294967295 or uids > 100:
+                    raise ValueError()
+            elif option == "--expected-uidvalidity":
+                if option in seen or not value.isascii() or not value.isdecimal() or len(value) > 10 or not 1 <= int(value) <= 4294967295:
+                    raise ValueError()
+            elif option == "--report-search":
+                if option in seen or value not in ("header", "text", "sender-date", "recent-uids"):
+                    raise ValueError()
+            elif option == "--report-date":
+                if option in seen or datetime.date.fromisoformat(value).isoformat() != value:
+                    raise ValueError()
+            elif option == "--report-from":
+                if option in seen or len(value) > 254 or not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+", value):
+                    raise ValueError()
+            elif option == "--report-message-id":
+                if option in seen or len(value) > 998 or not re.fullmatch(r"<[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+>", value):
+                    raise ValueError()
+            elif option in seen or str(uuid.UUID(value)) != value:
+                raise ValueError()
+            index += 2
+        else:
+            raise ValueError()
+        seen.add(option)
+    if not {"--package-id", "--attempt-id"} <= seen:
+        raise ValueError()
+    if "--expected-uidvalidity" in seen and "--uid" not in seen:
+        raise ValueError()
+    if {"--uid", "--report-message-id"} <= seen and "--expected-uidvalidity" not in seen:
+        raise ValueError()
+    if {"--uid", "--report-search"} <= seen:
+        raise ValueError()
+    if "--report-search" in seen and "--report-message-id" not in seen:
+        raise ValueError()
+    sender_date = "--report-search" in seen and args[args.index("--report-search") + 1] == "sender-date"
+    if sender_date != ({"--report-date", "--report-from"} <= seen) or (not sender_date and seen & {"--report-date", "--report-from"}):
+        raise ValueError()
+    if "--correlate-by-headers" in seen and "--report-message-id" not in seen:
+        raise ValueError()
+    binding = read_config(home / "keyring.toml").get("imap", {})
+    if (set(binding) != {"host", "port", "mailbox"}
+            or any(not isinstance(binding[k], str) or not binding[k] for k in ("host", "mailbox"))
+            or type(binding["port"]) is not int or not 1 <= binding["port"] <= 65535):
+        raise ValueError()
+    config = home / "imap.toml"
+    cfg = read_config(config)
+    if (any(cfg.get(k, default) != binding[k] for k, default in (("host", None), ("port", 993), ("mailbox", "INBOX")))
+            or cfg.get("username") != LOGIN or cfg.get("password_env") != PASSWORD_ENV
+            or cfg.get("home", str(home)) != str(home)
+            or cfg.get("binary", str(Path.home() / ".local/bin/agent-mailer")) != str(Path.home() / ".local/bin/agent-mailer")):
+        raise ValueError()
+    return config
+
+
+def executable_state(path):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return "missing"
+    except OSError:
+        return "unavailable"
+    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+            or info.st_uid != os.getuid() or info.st_mode & 0o022):
+        return "unsafe"
+    return "ready" if os.access(path, os.X_OK) else "not_executable"
+
+
+def preflight(home):
+    checks = {"binding": "not_checked", "core_binary": "not_checked",
+              "smtp_configuration": "blocked", "keyring_item": "blocked"}
+    try:
+        configure_binding(home)
+        checks["binding"] = "ready"
+    except FileNotFoundError:
+        checks["binding"] = "missing"
+    except Exception:
+        checks["binding"] = "invalid_or_unavailable"
+    binary = Path.home() / ".local/bin/agent-mailer"
+    checks["core_binary"] = executable_state(binary)
+    if checks["binding"] == "ready":
+        try:
+            config = validate_run([], home)
+            checks["smtp_configuration"] = "binding_matches"
+        except FileNotFoundError:
+            checks["smtp_configuration"] = "missing"
+        except Exception:
+            checks["smtp_configuration"] = "invalid_or_binding_mismatch"
+        if checks["core_binary"] == "ready" and checks["smtp_configuration"] == "binding_matches":
+            try:
+                env = os.environ.copy()
+                env.pop(PASSWORD_ENV, None)
+                output = subprocess.run([str(binary), "--config", str(config), "preflight", "--json"],
+                                        env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, timeout=10, check=False)
+                value = json.loads(output.stdout)
+                if output.returncode == 2:
+                    checks["smtp_configuration"] = "core_incompatible"
+                elif (output.returncode or value.get("ok") is not True or value.get("schema_version") != 1
+                      or value.get("result", {}).get("preflight_schema_version") != 1):
+                    checks["smtp_configuration"] = "core_preflight_failed"
+                else:
+                    checks["smtp_configuration"] = ("ready" if value["result"]["checks"]["smtp"] == "ready"
+                                                        else "invalid")
+            except subprocess.TimeoutExpired:
+                checks["smtp_configuration"] = "core_timeout"
+            except Exception:
+                checks["smtp_configuration"] = "core_preflight_failed"
+        try:
+            state = keyring_operation("probe", timeout=5)
+            checks["keyring_item"] = state if state in {"available", "missing", "ambiguous", "locked", "backend_unavailable", "session_unavailable"} else "unavailable"
+        except TimeoutError:
+            checks["keyring_item"] = "timeout"
+        except Exception:
+            checks["keyring_item"] = "unavailable"
+    ready = (checks["binding"] == checks["core_binary"] == checks["smtp_configuration"] == "ready"
+             and checks["keyring_item"] == "available")
+    return emit({"schema_version": 1, "ok": True, "error": None,
+                 "result": {"preflight_schema_version": 1, "ready": ready, "checks": checks,
+                            "secret_loaded": False, "interactive": False, "network_used": False,
+                            "storage_opened": False, "remote_authentication_verified": False}})
+
+
+def main(args):
+    if not args:
+        return fail()
+    home = Path.home() / ".local/share/agent-mailer"
+    if args == ["preflight", "--json"]:
+        return preflight(home)
+    configure_binding(home)
+    if args == ["store"]:
+        # Only this owner-operated setup path is interactive. Never print stdout.
+        dialog = subprocess.run(["/usr/bin/zenity", "--password", "--title=Agent Mailer: пароль приложения"],
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                timeout=300, check=False)
+        if dialog.returncode != 0:
+            return fail()
+        password = dialog.stdout.decode("utf-8").removesuffix("\n")
+        if not password or "\x00" in password or len(password.encode("utf-8")) > 2048:
+            return fail()
+        if not keyring_operation("store", password, timeout=60):
+            return fail()
+        return emit({"schema_version": 1, "ok": True, "result": {"stored": True}, "error": None})
+    if args[0] not in ("run", "imap-dsn") or len(args) < 2:
+        return fail()
+    home = Path.home() / ".local/share/agent-mailer"
+    if args[0] == "imap-dsn":
+        config = validate_imap(args[1:], home)
+        binary = str(Path.home() / ".local/bin/agent-mailer-imap-dsn")
+        command = [binary, "--config", str(config), *args[1:]]
+    else:
+        config = validate_run(args[1:], home)
+        binary = str(Path.home() / ".local/bin/agent-mailer")
+        command = [binary, "--home", str(home), "--config", str(config), *args[1:]]
+    password = keyring_operation("lookup")
+    env = os.environ.copy()
+    env[PASSWORD_ENV] = password
+    os.execve(binary, command, env)
+    return 0
+
+
+
+if __name__ == "__main__":
+    try:
+        code = main(sys.argv[1:])
+    except Exception:
+        # Library/OS error strings can contain private data; never echo them.
+        code = fail()
+    sys.exit(code)

@@ -1,0 +1,11 @@
+# Support scope
+
+The native core supports the documented Linux x86_64/glibc, trusted local-storage workflow with explicit owner instructions; provider-specific examples include Yandex. The core needs no Node.js, Bun or Python. Optional desktop/IMAP integrations have separate system-Python/libsecret/session requirements. Other platforms/providers/accounts, shared filesystems, OAuth refresh, Sent synchronization and unattended inbox operation are not verified.
+
+For ordinary bugs, use the repository’s Issues tab. Start with the [documentation index](docs/README.md). Include a synthetic reproducer. In reports, include version, platform, enabled features, command shape and exit/error code. Redact sender/account/home paths in doctor/configuration output. Prepare/inspect/raw EML/SQLite/keyring files can contain private data; do not attach them. Use a synthetic PDF and example.org identities. Security issues follow [SECURITY.md](SECURITY.md).
+
+Use the latest 0.7.x patch with matching optional scripts. An offline doctor/dry-run validates local settings, not remote login, mailbox epoch or delivery. Unknown/accepted packages remain blocked after crashes or delivery reports. Follow [restore guidance](docs/upgrade-and-recovery.md) before activating a restored store; cache state cannot authorize SMTP retry.
+
+`list --limit` bounds a page to 1–100 verified statuses; `--summary` is an unverified ID index. Legacy list/status still read complete package/evidence data and target modest archives. Database-only snapshots can be verified, but their freshness cannot be established offline. No unbounded inbound monitoring is provided. Cargo registry publishing is disabled; install the reviewed GitHub release or build from source. Hosted CI stays disabled and development checks run locally.
+
+For setup problems start with [offline preflight](docs/preflight.md). Its fixed statuses omit sender/login/path values; still review any report before sharing. ready:true verifies neither remote credentials nor consent. Core preflight never opens storage; desktop preflight searches item metadata without loading a secret.

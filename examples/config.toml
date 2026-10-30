@@ -1,0 +1,11 @@
+# Provider-specific setup is documented separately; see docs/mailbox-target.md.
+# Copy outside the repository. SMTP settings remain disabled and unverified.
+sender = "sender@example.org"
+# [smtp]
+# host = "SMTP_HOST_FROM_PROVIDER"
+# port = 465
+# security = "tls" # or "starttls"; always required and verified
+# username = "USERNAME_FROM_PROVIDER"
+# password_env = "AGENT_MAILER_SMTP_PASSWORD"
+# timeout_seconds = 30
+# total_timeout_seconds = 60 # whole network worker including DNS

@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "versions": {
+    "old": "agent-mailer 0.5.2",
+    "new": "agent-mailer 0.6.0"
+  },
+  "platform": "Linux",
+  "architecture": "x86_64",
+  "packages": 300,
+  "pdf_bytes": 262144,
+  "runs": 3,
+  "archive_unchanged": true,
+  "full_results_equivalent": true,
+  "binary_sha256": {
+    "old": "68982a806640187675b170953229ff5113ad4b255954e0ff5eac7afe8bdd7f52",
+    "new": "3532036c1ad9d26513bc754d51fcf9ac899739530a58f66de9bc3a9197becce2"
+  },
+  "results": {
+    "old_full": {
+      "samples": [
+        {
+          "ms": 172.77297300461214,
+          "peak_rss_kib": 10304
+        },
+        {
+          "ms": 149.52433199505322,
+          "peak_rss_kib": 10552
+        },
+        {
+          "ms": 164.06721199746244,
+          "peak_rss_kib": 10428
+        }
+      ],
+      "median_ms": 164.06721199746244,
+      "median_peak_rss_kib": 10428
+    },
+    "new_full": {
+      "samples": [
+        {
+          "ms": 151.40096200047992,
+          "peak_rss_kib": 10368
+        },
+        {
+          "ms": 144.5598589925794,
+          "peak_rss_kib": 9656
+        },
+        {
+          "ms": 149.7813840105664,
+          "peak_rss_kib": 10484
+        }
+      ],
+      "median_ms": 149.7813840105664,
+      "median_peak_rss_kib": 10368
+    },
+    "new_page_25": {
+      "samples": [
+        {
+          "ms": 20.330889004981145,
+          "peak_rss_kib": 8184
+        },
+        {
+          "ms": 19.005663009011187,
+          "peak_rss_kib": 7968
+        },
+        {
+          "ms": 20.456293990719132,
+          "peak_rss_kib": 7876
+        }
+      ],
+      "median_ms": 20.330889004981145,
+      "median_peak_rss_kib": 7968
+    },
+    "new_ids_25": {
+      "samples": [
+        {
+          "ms": 4.050809002364986,
+          "peak_rss_kib": 7080
+        },
+        {
+          "ms": 3.988932992797345,
+          "peak_rss_kib": 7340
+        },
+        {
+          "ms": 4.184239005553536,
+          "peak_rss_kib": 7232
+        }
+      ],
+      "median_ms": 4.050809002364986,
+      "median_peak_rss_kib": 7232
+    }
+  }
+}

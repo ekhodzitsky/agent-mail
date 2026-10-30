@@ -1,0 +1,36 @@
+/target/
+/.local/
+*.sqlite*
+.env*
+/config.toml
+
+# Agent state is local, including in private repositories.
+.serena
+.aider
+.aider.*
+.claude-memory-compiler
+.codebase-memory
+.codebase-memory-*
+backlog
+.backlog
+backlog.config.yml
+
+# No shared client configuration is currently defined.
+.grok
+.claude
+.codex
+.cursor
+.kimi
+.kimi-code
+.agents
+.omc
+.omx
+.superpowers
+.gstack
+.mcp.json
+
+# Optional Python integration caches stay local.
+__pycache__/
+*.py[cod]
+
+/keyring.toml

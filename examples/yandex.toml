@@ -1,0 +1,11 @@
+# Verified against official Yandex documentation on 2026-10-29.
+# Account access and authentication are not yet verified. See docs/yandex-setup.md.
+sender = "sender@example.org"
+[smtp]
+host = "smtp.yandex.ru"
+port = 465
+security = "tls"
+username = "account@example.org"
+password_env = "AGENT_MAILER_SMTP_PASSWORD"
+timeout_seconds = 30
+total_timeout_seconds = 60
