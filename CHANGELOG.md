@@ -4,6 +4,10 @@ User-visible changes are recorded here. Follow [versioning](VERSIONING.md); prod
 
 ## Unreleased
 
+### Documentation
+
+- Remove the native binary download-count badge and its explanatory text from the root README.
+
 ## 0.8.0 — 2026-10-30
 
 ### Changed

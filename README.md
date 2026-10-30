@@ -3,7 +3,6 @@
 **Email for AI agents. Prepare. Review. Send.**
 
 [![Version: 0.8.0](docs/badges/release.svg)](docs/releases.md)
-[![Native binary downloads for v0.8.0](https://img.shields.io/github/downloads/ekhodzitsky/agent-mail/v0.8.0/agent-mail-0.8.0-x86_64-unknown-linux-gnu?label=binary%20downloads)](https://github.com/ekhodzitsky/agent-mail/releases/tag/v0.8.0)
 [![Source MSRV: Rust 1.88](docs/badges/msrv.svg)](Cargo.toml)
 [![License: MIT](docs/badges/license.svg)](LICENSE)
 
@@ -91,7 +90,7 @@ authenticated proof. Authorization remains the owner's decision.
 [Local tests](docs/validation.md) exercise corruption, concurrent sends,
 refusals, TLS and process crashes. [Measured performance](docs/benchmarks.md)
 includes its hardware and storage limits. Hosted CI is disabled; coverage
-is unmeasured. Version/download badges refer to release artifacts, not users.
+is unmeasured. The version badge identifies the published release.
 
 [Documentation](docs/README.md) · [Agent skill](skills/agent-mail/SKILL.md) ·
 [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) ·
