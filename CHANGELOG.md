@@ -4,6 +4,14 @@ User-visible changes are recorded here. Follow [versioning](VERSIONING.md); prod
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-30
+
+### Changed
+
+- Rename the Cargo package, Rust crate, binary, adapters and portable skill to agent-mail. Update current examples, discovery, distribution tooling and documentation. This is an incompatible command-name change; update scripts and explicit adapter binary paths.
+- Preserve existing package/attempt bytes, storage schemas, legacy default-state selection, legacy home environment fallback and Keyring lookup identities. Refuse ambiguous histories before opening state or loading credentials; new installations use the agent-mail directory.
+- Rewrite the root README around the agent's prepare/review/authorized-send workflow, a short command example, practical benefits and focused limitations, following ryf's direct introduction/example/capabilities structure.
+
 ### Documentation
 
 - Rework the root README around a visible prepare/inspect/offline-validation workflow and actual JSON result; move detailed native installation into the installation guide and add a complete synthetic tutorial with committed byte fixtures.

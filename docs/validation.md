@@ -6,7 +6,7 @@ Run `bash scripts/check-local.sh` with Bash, Git, system Python 3.11+, OpenSSL C
 
 The gate runs formatting and Clippy with production/test-smtp features on stable and MSRV 1.88, both Rust suites, optional adapter/scanner tests, dependency audit/deny and isolated test/production installations. It never dispatches hosted CI or connects to a real mailbox. Exact source revision, toolchain, commands/results and artifact hashes belong in release VERIFICATION.txt and SHA256SUMS.
 
-The current source checks for the 0.7.1 runtime, including documentation work under Unreleased, have 40 Rust unit tests (including an internal child fixture), 41 default/51 test-smtp CLI tests, 29 keyring adapter tests, 34 IMAP adapter tests, 2 private-marker input tests, 3 documentation-check tests, 2 documented-installer failure tests and 1 real CLI quota-fault test. Test counts describe this source branch, not retroactive changes to an immutable release; each release VERIFICATION lists its tagged checks. Counts are exercised cases, not security certification or coverage percentage.
+The current 0.8.0 source checks have 40 Rust unit tests (including an internal child fixture), 44 default/54 test-smtp CLI tests, 32 keyring adapter tests, 35 IMAP adapter tests, 2 private-marker input tests, 3 documentation-check tests, 2 documented-installer failure tests and 1 real CLI quota-fault test. Test counts describe this source branch, not retroactive changes to an immutable release; each release VERIFICATION lists its tagged checks. Counts are exercised cases, not security certification or coverage percentage.
 
 ## Exercised boundaries
 
@@ -15,6 +15,7 @@ The current source checks for the 0.7.1 runtime, including documentation work un
 | Frozen materials | Exact letter/PDF/MIME bytes, hashes, tampering refusal, HTML/plain alternatives, private exclusive EML export |
 | Submission | Separate CLI processes, complete loopback scenario, exclusive same-package lock, repeat refusal, explicit rejection, timeout/disconnect/process death after DATA |
 | TLS and secrets | Implicit TLS/mandatory STARTTLS, untrusted/wrong-host/expired certificates, no credentials before required TLS, safe errors when replies echo a synthetic secret, unsafe credential-destination refusal before lookup/exec |
+| Rename compatibility | Existing accepted/unknown history and exact package bytes, fresh defaults, legacy/new environment selection, ambiguity refusal and unchanged credential identity |
 | Storage | Durable unknown before network, commit veto and real SQLITE_FULL, migration preservation/concurrent openers, schema identity/index/column refusal, symlink/hardlink/FIFO and permissions checks |
 | Observations | Immutable reconciliation/receipt/DSN bytes and binding, idempotent replay, corruption/lock/commit failure, conflicting reports, deterministic report truncation/byte mutations, unchanged resend blocks |
 | Agent/IMAP | Parser-derived discovery, operation-key conflicts/concurrency, verified loopback TLS, read-only selected UID/epoch/Message-ID, PEEK limits/deadlines, immutable cache provenance, cache failure ordering and paired core/cache restoration/skew refusal |
@@ -27,7 +28,7 @@ Optional `scripts/check-upgrade.py OLD_BINARY NEW_BINARY --reports` compares rea
 
 No throughput, coverage percentage, physical power-loss, broad provider interoperability, unattended consent or independent-audit claim is made. Provider examples and unverified capabilities are listed in [supported scope](production-readiness.md); development scripts never contact a real provider. Keep logs, fixtures generated during testing and all operational evidence outside tracked files.
 
-The local gate also checks Markdown file/heading links and compares the current storage declarations and CLI command table to offline discovery from the installed production binary. Run it directly with `python3 -B scripts/check-docs.py --binary /path/to/agent-mailer`. This is a bounded Markdown/contract check, not a complete prose fact checker or external-link validator.
+The local gate also checks Markdown file/heading links and compares the current storage declarations and CLI command table to offline discovery from the installed production binary. Run it directly with `python3 -B scripts/check-docs.py --binary /path/to/agent-mail`. This is a bounded Markdown/contract check, not a complete prose fact checker or external-link validator.
 
 IMAP fault injection also blocks a synthetic core subprocess, then exercises adapter deadline and supervisor death. The managed worker session must leave no live core descendant. Process-group cleanup is separate from SQLite atomicity: interrupted core imports can still have committed evidence, so inspect/replay by exact bytes rather than treating timeout as proof of no local progress.
 

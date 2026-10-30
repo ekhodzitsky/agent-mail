@@ -6,11 +6,11 @@ The CLI does not discover a mail provider or account. Configure a sender and pro
 
 | Selection | Resolution |
 |---|---|
-| State directory | `--home PATH`, otherwise `AGENT_MAILER_HOME`, otherwise `$HOME/.local/share/agent-mailer` |
+| State directory | `--home PATH`, otherwise `AGENT_MAIL_HOME` (legacy `AGENT_MAILER_HOME` also accepted), otherwise `$HOME/.local/share/agent-mail`; an existing legacy directory is preferred over a fresh store |
 | Configuration | `--config PATH`, otherwise `config.toml` in the selected state directory |
 | Explicit config for preflight | Works without HOME or a state directory; preflight never opens state |
 
-Always retain the intended state/config selection across preparation, inspection and submission. Global options work before or after subcommands. Paths may be ordinary relative paths or absolute filesystem paths; operational state homes beginning with the ambiguous relative prefix `file:` are refused. Never choose an empty/new store to evade accepted/unknown history. Repository names do not change default runtime paths.
+Always retain the intended state/config selection across preparation, inspection and submission. Global options work before or after subcommands. Paths may be ordinary relative paths or absolute filesystem paths; operational state homes beginning with the ambiguous relative prefix `file:` are refused. Never choose an empty/new store to evade accepted/unknown history. Existing state is never moved as part of a rename. Conflicting environment selectors or two existing default directories return home_ambiguous (exit 3); select the intended history explicitly with --home.
 
 ## TOML fields
 
@@ -21,7 +21,7 @@ host = "smtp.example.org"
 port = 465
 security = "tls"
 username = "login@example.org"
-password_env = "AGENT_MAILER_SMTP_PASSWORD"
+password_env = "AGENT_MAIL_SMTP_PASSWORD"
 timeout_seconds = 30
 total_timeout_seconds = 60
 ```
@@ -54,4 +54,4 @@ Keep configuration private, for example mode 0600 under a trusted directory. Cor
 3. `send ID --dry-run --json` verifies the package, resend policy and configuration. It makes no attempt/network call; accepted/unknown packages are refused.
 4. Real submission is a separate authorized operation. It may be accepted, explicitly rejected or unknown; follow the [agent workflow](agent-workflow.md).
 
-Desktop `agent-mailer-keyring preflight --json` inspects the matching item's metadata without loading its value. See [preflight statuses](preflight.md). Configuring a credential or obtaining local readiness never authorizes sending or mailbox access.
+Desktop `agent-mail-keyring preflight --json` inspects the matching item's metadata without loading its value. See [preflight statuses](preflight.md). Configuring a credential or obtaining local readiness never authorizes sending or mailbox access.

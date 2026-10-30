@@ -27,7 +27,7 @@ home = Path.home().resolve()
 roots = [(home, '/build-home'),
          (Path(os.environ.get('CARGO_HOME', home / '.cargo')).resolve(), '/cargo'),
          (Path(os.environ.get('RUSTUP_HOME', home / '.rustup')).resolve(), '/rustup'),
-         (target, '/target'), (project, '/agent-mailer')]
+         (target, '/target'), (project, '/agent-mail')]
 env = os.environ.copy()
 env['CARGO_ENCODED_RUSTFLAGS'] = '\x1f'.join(f'--remap-path-prefix={path}={replacement}' for path, replacement in roots)
 env['CARGO_PROFILE_RELEASE_STRIP'] = 'symbols'

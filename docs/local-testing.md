@@ -26,7 +26,7 @@ security = "loopback_test"
 timeout_seconds = 5
 ```
 
-Use `target/debug/agent-mailer --home /your/temp/home …` for each command. Inspect the selected package before send. The server must be capture-only and must not relay mail. Prefer the included automated fixture; it cannot relay. Never use this development feature to configure a real mailbox.
+Use `target/debug/agent-mail --home /your/temp/home …` for each command. Inspect the selected package before send. The server must be capture-only and must not relay mail. Prefer the included automated fixture; it cannot relay. Never use this development feature to configure a real mailbox.
 
 The normal `cargo install --path . --locked` build excludes plaintext SMTP. Dry-run does not test a socket and will succeed with a syntactically valid configuration even when no server is listening.
 

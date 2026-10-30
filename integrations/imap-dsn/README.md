@@ -1,11 +1,13 @@
 # Optional IMAP DSN retrieval
 
-`agent-mailer-imap-dsn` is an on-demand, separate Python 3.11+ standard-library integration tested on Linux with Unix file-permission/no-follow semantics. Other operating systems are not supported by this adapter release. The installed Rust CLI remains standalone and has no Python dependency. This adapter requires an owner-selected IMAP server/account, explicit read scope, a verified TLS connection and the installed agent-mailer binary. It does not configure a provider or reuse SMTP credentials automatically.
+Use the new agent-mail executable names. Existing legacy state and Keyring lookup identities remain compatible; follow [rename/upgrade instructions](../../docs/upgrade-and-recovery.md#rename-to-agent-mail-08) before replacing an installation. Do not create a fresh history to rename the tool.
+
+`agent-mail-imap-dsn` is an on-demand, separate Python 3.11+ standard-library integration tested on Linux with Unix file-permission/no-follow semantics. Other operating systems are not supported by this adapter release. The installed Rust CLI remains standalone and has no Python dependency. This adapter requires an owner-selected IMAP server/account, explicit read scope, a verified TLS connection and the installed agent-mail binary. It does not configure a provider or reuse SMTP credentials automatically.
 
 Install the script alongside the core binary:
 
 ```sh
-install -Dm755 integrations/imap-dsn/agent-mailer-imap-dsn "$HOME/.local/bin/agent-mailer-imap-dsn"
+install -Dm755 integrations/imap-dsn/agent-mail-imap-dsn "$HOME/.local/bin/agent-mail-imap-dsn"
 ```
 
 Create a private mode-0600 TOML file outside Git. Synthetic example:
@@ -14,14 +16,14 @@ Create a private mode-0600 TOML file outside Git. Synthetic example:
 host = "imap.example.org"
 port = 993
 username = "login@example.org"
-password_env = "AGENT_MAILER_IMAP_PASSWORD"
+password_env = "AGENT_MAIL_IMAP_PASSWORD"
 mailbox = "INBOX"
 timeout_seconds = 10
 total_timeout_seconds = 60
 max_messages = 20
 # Optional absolute paths; defaults use the existing local installation/state.
 # home = "/absolute/private/state"
-# binary = "/absolute/path/to/agent-mailer"
+# binary = "/absolute/path/to/agent-mail"
 ```
 
 The secret must already be supplied through the named environment variable by an owner-operated secret mechanism (the optional [GNOME Keyring launcher](../gnome-keyring/README.md#optional-imap-dsn-credential-launch) supports an explicit private IMAP binding); never pass it in argv or put it in this file. Sender aliases do not establish the IMAP login identity. This release supports implicit TLS with certificate/hostname verification and ASCII usernames/mailbox names. There is no plaintext, certificate bypass, STARTTLS or OAuth-refresh mode. Normal system TLS trust configuration applies.
@@ -29,11 +31,11 @@ The secret must already be supplied through the named environment variable by an
 Choose an existing DSN-enabled package and its accepted/unknown attempt:
 
 ```sh
-agent-mailer-imap-dsn --config /absolute/private/imap.toml \
+agent-mail-imap-dsn --config /absolute/private/imap.toml \
   --package-id PACKAGE_UUID --attempt-id ATTEMPT_UUID --dry-run --json
 
 # Only with the owner's read authorization:
-agent-mailer-imap-dsn --config /absolute/private/imap.toml \
+agent-mail-imap-dsn --config /absolute/private/imap.toml \
   --package-id PACKAGE_UUID --attempt-id ATTEMPT_UUID --json
 ```
 
@@ -84,7 +86,7 @@ Successful network results also include mailbox_messages, uidvalidity, scanned_h
 A selected report outside the recent lookup window can be retrieved directly, without SEARCH or reading identifier headers of other messages:
 
 ```sh
-agent-mailer-imap-dsn --config /absolute/private/imap.toml \
+agent-mail-imap-dsn --config /absolute/private/imap.toml \
   --package-id PACKAGE_UUID --attempt-id ATTEMPT_UUID \
   --uid 42 --expected-uidvalidity 77 \
   --report-message-id '<selected-notification@example.org>' \
@@ -97,7 +99,7 @@ After verified TLS login and EXAMINE, the adapter compares the observed epoch be
 
 With a matching epoch, the exact notification header/body and core original-header or ENVID checks still apply. Cached reports retain original provenance; same UID under a new, explicitly observed epoch is a different cache identity, while identical raw evidence still deduplicates in the core. This lookup authenticates neither the report contents nor recipient delivery and never grants send/retry permission.
 
-Credential variable names must be application-specific. The current adapter rejects loader/interpreter/locale/process-control destinations before credential injection; use names such as AGENT_MAILER_SMTP_PASSWORD or AGENT_MAILER_IMAP_PASSWORD. This fixes misconfiguration-driven pre-startup diagnostic leakage; it does not protect a process started with an already dangerous external environment.
+Credential variable names must be application-specific. The current adapter rejects loader/interpreter/locale/process-control destinations before credential injection; use names such as AGENT_MAIL_SMTP_PASSWORD or AGENT_MAIL_IMAP_PASSWORD. This fixes misconfiguration-driven pre-startup diagnostic leakage; it does not protect a process started with an already dangerous external environment.
 
 Unsupported/foreign/altered cache identities and layouts fail with ledger_schema/exit 9. The opener validates a consistent schema snapshot before changing persistent journal settings, then rechecks under its initialization lock. Synthetic quiescent WAL fixtures verify unchanged database bytes on refusal; normal SQLite recovery of an interrupted database is a separate boundary.
 

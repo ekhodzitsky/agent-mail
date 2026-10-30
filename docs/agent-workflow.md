@@ -8,7 +8,7 @@ Run describe --json without opening state. Use preflight --json for configuratio
 
 
 ```sh
-agent-mailer describe --json
+agent-mail describe --json
 ```
 
 Discovery reads no config/database and creates no files. Prefer parser-derived options over assumptions about a different installed version. [Structured guidance fields](json-contract.md#discovery-operation-keys-and-guidance) are advisory, never consent.
@@ -25,8 +25,8 @@ Discovery reads no config/database and creates no files. Prefer parser-derived o
 Only after that instruction:
 
 ```sh
-agent-mailer send PACKAGE_ID --json
-agent-mailer status PACKAGE_ID --json
+agent-mail send PACKAGE_ID --json
+agent-mail status PACKAGE_ID --json
 ```
 
 These are real-submission commands, not tutorial steps. Preserve explicit --home/--config or the configured Keyring launcher; never run them on the synthetic demonstration package.
@@ -45,7 +45,7 @@ A worker deadline can leave prepared, unknown or a final committed state; status
 
 
 ```sh
-agent-mailer prepare --to recipient@example.org \
+agent-mail prepare --to recipient@example.org \
   --subject-file subject.txt --body-file letter.txt --attach resume.pdf \
   --operation-key synthetic/job-42 --json
 ```
@@ -88,4 +88,4 @@ JSON results include optional top-level `next` guidance. Guidance schema 1 uses 
 
 Runnable hints retain the invocation's explicit home/config flags (including a parsed legacy home environment override). Non-UTF-8 paths suppress runnable hints rather than generating lossy commands. Execute argv through an argument-array API, not a shell-joined string. No hint includes a send invocation. Guidance is invocation context, not archived correspondence: backup/upgrade comparisons check archived data independently of hints.
 
-The portable [Agent Mailer skill](../skills/agent-mailer/SKILL.md) is included in source. Install/select it using the agent environment's normal mechanism if desired; this release does not modify global agent configuration.
+The portable [Agent Mail skill](../skills/agent-mail/SKILL.md) is included in source. Install/select it using the agent environment's normal mechanism if desired; this release does not modify global agent configuration.

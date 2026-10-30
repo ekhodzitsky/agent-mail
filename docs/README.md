@@ -1,6 +1,6 @@
 # Documentation
 
-Agent Mail is the project; `agent-mailer` is the native command and Cargo package. Runtime identifiers remain compatible so a repository rename cannot separate a sender from its history.
+Agent Mail is the project; `agent-mail` is the native command and Cargo package. Runtime identifiers remain compatible so a repository rename cannot separate a sender from its history.
 
 ## Start and configure
 
@@ -23,7 +23,7 @@ Agent Mail is the project; `agent-mailer` is the native command and Cargo packag
 ## Operate and extend
 
 - [Snapshots](backup.md), [upgrade/recovery](upgrade-and-recovery.md) and [storage migrations](storage-migrations.md).
-- Optional [Keyring launcher](../integrations/gnome-keyring/README.md), [selected read-only IMAP reader](../integrations/imap-dsn/README.md) and [portable agent skill](../skills/agent-mailer/SKILL.md).
+- Optional [Keyring launcher](../integrations/gnome-keyring/README.md), [selected read-only IMAP reader](../integrations/imap-dsn/README.md) and [portable agent skill](../skills/agent-mail/SKILL.md).
 - [Supported scope](production-readiness.md), [support](../SUPPORT.md) and [security reporting](../SECURITY.md).
 
 ## Evaluate and develop
@@ -36,4 +36,4 @@ Agent Mail is the project; `agent-mailer` is the native command and Cargo packag
 
 README explains the task/benefit, first useful result, alternatives, evidence and limits. Getting started owns the complete synthetic recipe; releases owns installation/artifacts; configuration owns TOML/path selection. Agent workflow owns authorization and outcome handling, cli owns command inventory, json-contract owns serialized response/error fields. Feature guides own operational details; schema history belongs in storage-migrations rather than introductory recipes.
 
-Update the canonical page first, then summaries/links. Runtime consent/SMTP ambiguity/privacy warnings belong beside affected operations, without copying the entire security policy onto every page. Keep released assets distinct from Unreleased source documentation. Run `python3 -B scripts/check-docs.py --binary /path/to/agent-mailer`, verify changed examples on synthetic data and review rendered Markdown. External sources need dated primary-source review; the local checker cannot certify every sentence or website.
+Update the canonical page first, then summaries/links. Runtime consent/SMTP ambiguity/privacy warnings belong beside affected operations, without copying the entire security policy onto every page. Keep released assets distinct from Unreleased source documentation. Run `python3 -B scripts/check-docs.py --binary /path/to/agent-mail`, verify changed examples on synthetic data and review rendered Markdown. External sources need dated primary-source review; the local checker cannot certify every sentence or website.

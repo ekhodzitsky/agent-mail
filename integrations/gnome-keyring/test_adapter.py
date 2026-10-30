@@ -11,10 +11,22 @@ import subprocess
 import sys
 from unittest.mock import Mock, patch
 
-loader = importlib.machinery.SourceFileLoader("adapter", str(Path(__file__).with_name("agent-mailer-keyring")))
+loader = importlib.machinery.SourceFileLoader("adapter", str(Path(__file__).with_name("agent-mail-keyring")))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 adapter = importlib.util.module_from_spec(spec)
 loader.exec_module(adapter)
+
+
+def setUpModule():
+    global isolated_home, home_patch
+    isolated_home = tempfile.TemporaryDirectory()
+    home_patch = patch.object(Path, 'home', return_value=Path(isolated_home.name))
+    home_patch.start()
+
+
+def tearDownModule():
+    home_patch.stop()
+    isolated_home.cleanup()
 
 
 class AdapterTests(unittest.TestCase):
@@ -126,15 +138,15 @@ class BoundaryTests(unittest.TestCase):
     def test_exec_passes_secret_only_in_environment(self):
         config = {"sender": adapter.ACCOUNT, "smtp": {"username": adapter.LOGIN,
                   "host": "smtp.yandex.ru", "port": 465, "security": "tls",
-                  "password_env": "AGENT_MAILER_SMTP_PASSWORD"}}
+                  "password_env": "AGENT_MAIL_SMTP_PASSWORD"}}
         with patch.object(adapter, "configure_binding"), patch.object(adapter, "read_config", return_value=config), \
              patch.object(adapter, "keyring_operation", return_value="synthetic-secret"), \
              patch.object(adapter.os, "execve") as execute:
             self.assertEqual(adapter.main(["run", "doctor", "--json"]), 0)
             binary, args, env = execute.call_args.args
             self.assertNotIn("synthetic-secret", repr(args))
-            self.assertEqual(env["AGENT_MAILER_SMTP_PASSWORD"], "synthetic-secret")
-            self.assertTrue(binary.endswith("/.local/bin/agent-mailer"))
+            self.assertEqual(env["AGENT_MAIL_SMTP_PASSWORD"], "synthetic-secret")
+            self.assertTrue(binary.endswith("/.local/bin/agent-mail"))
 
     def test_output_failure_is_handled_without_traceback(self):
         with patch.object(adapter.os, "write", side_effect=BrokenPipeError):
@@ -142,14 +154,14 @@ class BoundaryTests(unittest.TestCase):
 
     def test_real_full_stdout_has_no_shutdown_traceback(self):
         with open("/dev/full", "wb") as output:
-            result = subprocess.run([sys.executable, "-B", str(Path(__file__).with_name("agent-mailer-keyring"))], stdout=output, stderr=subprocess.PIPE, check=False)
+            result = subprocess.run([sys.executable, "-B", str(Path(__file__).with_name("agent-mail-keyring"))], stdout=output, stderr=subprocess.PIPE, check=False)
         self.assertEqual(result.returncode, 7)
         self.assertEqual(result.stderr, b"")
 
     def test_wrong_smtp_host_rejected_before_secret_access(self):
         config = {"sender": adapter.ACCOUNT, "smtp": {"username": adapter.LOGIN,
                   "host": "attacker.example", "port": 465, "security": "tls",
-                  "password_env": "AGENT_MAILER_SMTP_PASSWORD"}}
+                  "password_env": "AGENT_MAIL_SMTP_PASSWORD"}}
         with patch.object(adapter, "configure_binding"), patch.object(adapter, "read_config", return_value=config), \
              patch.object(adapter, "keyring_operation") as lookup:
             with self.assertRaises(ValueError):
@@ -182,7 +194,7 @@ class CredentialEnvironmentTests(unittest.TestCase):
         names=['ACCOUNT','LOGIN','HOST','PORT','SECURITY','PASSWORD_ENV','ATTRS']
         blocked=['LD_PRELOAD','LD_AUDIT','LD_DEBUG','DYLD_INSERT_LIBRARIES','PYTHONPATH','PYTHONHOME',
                  'PYTHONINSPECT','SSL_CERT_FILE','SSL_CERT_DIR','PATH','HOME','LANG','LC_ALL',
-                 'OPENSSL_CONF','OPENSSL_MODULES','SSLKEYLOGFILE','GCONV_PATH','GLIBC_TUNABLES','RUST_BACKTRACE','AGENT_MAILER_HOME']
+                 'OPENSSL_CONF','OPENSSL_MODULES','SSLKEYLOGFILE','GCONV_PATH','GLIBC_TUNABLES','RUST_BACKTRACE','AGENT_MAIL_HOME']
         for variable in blocked:
             binding={'sender':'sender@example.org','username':'login@example.org','host':'smtp.example.org',
                      'port':465,'security':'tls','password_env':variable,'account':'stable-synthetic-key'}
@@ -195,7 +207,7 @@ class CredentialEnvironmentTests(unittest.TestCase):
                 lookup.assert_not_called();execute.assert_not_called()
 
     def test_application_specific_secret_names_remain_valid(self):
-        for variable in ['AGENT_MAILER_SMTP_PASSWORD','SMTP_TOKEN','mail_password','MAIL-PASSWORD']:
+        for variable in ['AGENT_MAIL_SMTP_PASSWORD','SMTP_TOKEN','mail_password','MAIL-PASSWORD']:
             binding={'sender':'sender@example.org','username':'login@example.org','host':'smtp.example.org',
                      'port':465,'security':'tls','password_env':variable,'account':'stable-synthetic-key'}
             names=['ACCOUNT','LOGIN','HOST','PORT','SECURITY','PASSWORD_ENV','ATTRS']
@@ -221,8 +233,8 @@ class ImapTests(unittest.TestCase):
              patch.object(adapter.os, 'execve') as execute:
             adapter.main(['imap-dsn', *self.args, '--uid', '42', '--dry-run'])
             binary, args, env = execute.call_args.args
-            self.assertEqual(binary, str(Path.home() / '.local/bin/agent-mailer-imap-dsn'))
-            self.assertEqual(args[:3], [binary, '--config', str(Path.home() / '.local/share/agent-mailer/imap.toml')])
+            self.assertEqual(binary, str(Path.home() / '.local/bin/agent-mail-imap-dsn'))
+            self.assertEqual(args[:3], [binary, '--config', str(Path.home() / '.local/share/agent-mail/imap.toml')])
             self.assertNotIn('synthetic-secret', repr(args))
             self.assertEqual(env[adapter.PASSWORD_ENV], 'synthetic-secret')
 
@@ -384,6 +396,47 @@ class PreflightTests(unittest.TestCase):
             p.chmod(0o722);self.assertEqual(adapter.executable_state(p), 'unsafe')
             link=Path(directory)/'link';link.symlink_to(p)
             self.assertEqual(adapter.executable_state(link), 'unsafe')
+
+
+
+class RenameTests(unittest.TestCase):
+    def test_default_history_selection_never_hides_legacy_store(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(Path, 'home', return_value=Path(root)):
+            current = Path(root) / '.local/share/agent-mail'
+            legacy = Path(root) / '.local/share/agent-mailer'
+            self.assertEqual(adapter.default_home(), current)
+            legacy.mkdir(parents=True)
+            self.assertEqual(adapter.default_home(), legacy)
+            current.mkdir()
+            with self.assertRaises(ValueError):
+                adapter.default_home()
+            current.rmdir()
+            legacy.rmdir()
+            legacy.symlink_to(Path(root) / 'missing')
+            self.assertEqual(adapter.default_home(), legacy)
+
+
+class RenameCredentialTests(unittest.TestCase):
+    def test_ambiguous_home_fails_before_secret_or_binding_access(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(Path, 'home', return_value=Path(root)):
+            for name in ('agent-mail', 'agent-mailer'):
+                (Path(root) / '.local/share' / name).mkdir(parents=True)
+            with patch.object(adapter, 'keyring_operation') as secret, patch.object(adapter, 'configure_binding') as binding:
+                with self.assertRaises(ValueError):
+                    adapter.main(['run', 'doctor', '--json'])
+                secret.assert_not_called()
+                binding.assert_not_called()
+
+    def test_existing_credential_identity_and_configured_variable_are_preserved(self):
+        binding = {'sender':'sender@example.org', 'username':'login@example.org',
+                   'host':'smtp.example.org', 'port':465, 'security':'tls',
+                   'password_env':'AGENT_MAILER_SMTP_PASSWORD', 'account':'stable-synthetic-key'}
+        names = ['ACCOUNT', 'LOGIN', 'HOST', 'PORT', 'SECURITY', 'PASSWORD_ENV', 'ATTRS']
+        with patch.multiple(adapter, **{n:getattr(adapter,n) for n in names}), patch.object(adapter, 'read_config', return_value=binding):
+            adapter.configure_binding(Path('/synthetic'))
+            self.assertEqual(adapter.ATTRS, {'application':'agent-mailer', 'account':'stable-synthetic-key'})
+            self.assertEqual(adapter.PASSWORD_ENV, 'AGENT_MAILER_SMTP_PASSWORD')
+
 
 if __name__ == "__main__":
     unittest.main()

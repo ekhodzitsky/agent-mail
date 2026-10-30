@@ -10,8 +10,8 @@ struct Fixture {
     dir: TempDir,
 }
 fn binary() -> std::ffi::OsString {
-    std::env::var_os("AGENT_MAILER_TEST_BIN")
-        .unwrap_or_else(|| env!("CARGO_BIN_EXE_agent-mailer").into())
+    std::env::var_os("AGENT_MAIL_TEST_BIN")
+        .unwrap_or_else(|| env!("CARGO_BIN_EXE_agent-mail").into())
 }
 impl Fixture {
     fn new() -> Self {
@@ -103,7 +103,7 @@ fn decode(o: Output) -> (i32, Value) {
     (o.status.code().unwrap(), v)
 }
 #[test]
-fn agent_mailer_keeps_legacy_default_state_and_environment_resend_blocks() {
+fn agent_mail_keeps_legacy_default_state_and_environment_resend_blocks() {
     let f = Fixture::new();
     let ids = [f.prepare(), f.prepare()];
     let before: Vec<_> = ids.iter().map(|id| f.call(&["inspect", id]).1).collect();
@@ -166,7 +166,7 @@ fn agent_mailer_keeps_legacy_default_state_and_environment_resend_blocks() {
         version["result"]["help"]
             .as_str()
             .unwrap()
-            .starts_with("agent-mailer ")
+            .starts_with("agent-mail ")
     );
 }
 #[test]
@@ -737,14 +737,14 @@ fn unsafe_configuration_is_rejected_without_an_attempt() {
         (
             "smtp.example.org",
             "starttls",
-            "username='synthetic'\npassword_env='AGENT_MAILER_TEST_MISSING_SECRET'\n",
+            "username='synthetic'\npassword_env='AGENT_MAIL_TEST_MISSING_SECRET'\n",
         ),
         ("smtp.example.org", "tls", "password='secret-token'\n"),
     ] {
         fs::write(f.dir.path().join("config.toml"),format!("sender='sender@example.org'\n[smtp]\nhost='{host}'\nport=465\nsecurity='{security}'\n{credentials}")).unwrap();
         let (code, v) = decode(
             f.cmd(&["send", &id, "--dry-run"])
-                .env_remove("AGENT_MAILER_TEST_MISSING_SECRET")
+                .env_remove("AGENT_MAIL_TEST_MISSING_SECRET")
                 .output()
                 .unwrap(),
         );
@@ -1684,7 +1684,7 @@ fn json_subcommand_help_describes_requested_arguments_without_state() {
     let output = command
         .args(["prepare", "--help", "--json"])
         .env_remove("HOME")
-        .env_remove("AGENT_MAILER_HOME")
+        .env_remove("AGENT_MAIL_HOME")
         .output()
         .unwrap();
     let (code, value) = decode(output);
@@ -1693,7 +1693,7 @@ fn json_subcommand_help_describes_requested_arguments_without_state() {
     let help = value["result"]["help"].as_str().unwrap();
     assert!(help.contains("--subject-file"));
     assert!(help.contains("--operation-key"));
-    assert!(help.contains("Usage: agent-mailer prepare"));
+    assert!(help.contains("Usage: agent-mail prepare"));
     assert!(!help.contains("Commands:"));
 }
 
@@ -1925,3 +1925,6 @@ mod archive;
 
 #[path = "cases/preflight.rs"]
 mod preflight;
+
+#[path = "cases/rename.rs"]
+mod rename;

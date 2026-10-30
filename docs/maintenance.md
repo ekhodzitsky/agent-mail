@@ -4,7 +4,7 @@ This living summary records bounded maintainer review, not independent certifica
 
 ## Documentation audit — current source
 
-Reviewed the root README/AGENTS/CONTRIBUTING/SECURITY/SUPPORT/VERSIONING/CHANGELOG, documentation navigation, command/JSON/configuration guides, storage/submission/recovery, DSN/import/evidence, installation/validation/benchmarks and optional adapter instructions. Claims were compared with current source, parser-derived describe and synthetic execution. This revision changes documentation/examples only; runtime behavior and published tags/assets are preserved.
+Reviewed the root README/AGENTS/CONTRIBUTING/SECURITY/SUPPORT/VERSIONING/CHANGELOG, documentation navigation, command/JSON/configuration guides, storage/submission/recovery, DSN/import/evidence, installation/validation/benchmarks and optional adapter instructions. Claims were compared with current source, parser-derived describe and synthetic execution. The earlier documentation-only revision preserved runtime behavior. The 0.8 rename also updates the executable/crate/adapters and adds fail-closed state selection; mail storage schemas, frozen bytes and credential lookup identities are preserved. Published tags remain immutable.
 
 | Priority | Confirmed problem | Refactor/disposition |
 |---|---|---|

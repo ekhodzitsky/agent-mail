@@ -83,7 +83,7 @@ pub struct Guidance {
 }
 impl Guidance {
     pub fn new(cli: &Cli) -> Self {
-        let mut prefix = Some(vec!["agent-mailer".to_string()]);
+        let mut prefix = Some(vec!["agent-mail".to_string()]);
         for (flag, path) in [
             ("--home", cli.home.as_ref()),
             ("--config", cli.config.as_ref()),

@@ -20,11 +20,14 @@ def load_markers(path):
 
 
 def default_marker_file():
-    value = os.environ.get('AGENT_MAILER_AUDIT_MARKERS_FILE')
+    value = os.environ.get('AGENT_MAIL_AUDIT_MARKERS_FILE')
     if value:
         return Path(value)
-    path = Path.home() / '.local/share/agent-mailer-audit/private-markers.txt'
-    return path if path.exists() else None
+    path = Path.home() / '.local/share/agent-mail-audit/private-markers.txt'
+    if path.exists():
+        return path
+    legacy = Path.home() / '.local/share/agent-mailer-audit/private-markers.txt'
+    return legacy if legacy.exists() else None
 
 
 def private_identifier_content(raw, markers=()):

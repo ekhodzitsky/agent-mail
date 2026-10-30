@@ -1,11 +1,13 @@
 # Offline package workload
 
+Historical raw samples retain the executable names and versions actually measured. Current reproduction commands use agent-mail; they do not reproduce an identical older binary.
+
 The measured promise is local preparation, review and no-network validation of a frozen package. This is a correctness-qualified latency sample, not a comparison with another mail client. Run date: 2026-10-30.
 
 ## Reproduce
 
 ```sh
-python3 -B scripts/benchmark-offline.py --binary /absolute/path/to/agent-mailer \
+python3 -B scripts/benchmark-offline.py --binary /absolute/path/to/agent-mail \
   --packages 20 --runs 3
 ```
 
@@ -36,8 +38,8 @@ The driver emits machine-readable raw samples with its workload and version. Pre
 Run date: 2026-10-30. Same Linux x86_64 / Ryzen AI 9 HX 370 host as above; fresh synthetic 300-package archive with a 256 KiB PDF per package (75 MiB of source PDFs), plain letter, no attempts or reports, tmpfs state and warm/uncontrolled OS caches. Production normalized 0.5.2 and 0.6.0 binaries; exact hashes and all repeated latency/RSS samples are in [raw listing results](benchmarks-list.json).
 
 ```sh
-python3 -B scripts/benchmark-list.py --old /path/to/agent-mailer-0.5.2 \
-  --new /path/to/agent-mailer-0.6.0 --packages 300 --runs 3
+python3 -B scripts/benchmark-list.py --old /path/to/agent-mail-0.5.2 \
+  --new /path/to/agent-mail-0.6.0 --packages 300 --runs 3
 ```
 
 Requires system Python and GNU `/usr/bin/time`, exclusively for this optional benchmark. The driver prepares through the actual prior binary, then runs old full, new full, new verified page and new ID summary in fixed order three times. It asserts identical full results, exact first-page equivalence, expected unverified summary shape and unchanged archive bytes. No network/credentials/owner files. Wall latency includes process/GNU time startup and JSON parsing; GNU time maximum resident set covers the CLI process, not the Python driver. Table latency is median of run times; RSS is median of per-run peak KiB, lower is smaller.
@@ -58,7 +60,7 @@ This workload has no HTML, many attachments, repeated refusals or DSNs. It is no
 Run date: 2026-10-30. Native normalized 0.7.0, same Linux x86_64/Ryzen host as above, **ext4 on NVMe**, 500 synthetic packages with one 256 KiB PDF and plain letter each. Source database: 311963648 bytes. Three sequential backup/verify runs to new directories on that same filesystem; each copy is removed after verification. System caches are warm/uncontrolled, CPU/load unpinned. Exact artifact hash and all samples: [raw backup results](benchmarks-backup.json).
 
 ```sh
-python3 -B scripts/benchmark-backup.py --binary /path/to/agent-mailer-0.7.0 \
+python3 -B scripts/benchmark-backup.py --binary /path/to/agent-mail-0.7.0 \
   --work-parent /private/synthetic-benchmark-parent --packages 500 --runs 3
 ```
 

@@ -1,6 +1,6 @@
 # Your first package
 
-This tutorial prepares and reviews a synthetic email, then validates it offline. It never submits mail. Use a trusted local filesystem and keep generated state private. The core binary is `agent-mailer`; the project/repository is Agent Mail.
+This tutorial prepares and reviews a synthetic email, then validates it offline. It never submits mail. Use a trusted local filesystem and keep generated state private. The core binary is `agent-mail`; the project/repository is Agent Mail.
 
 ## Install and obtain the examples
 
@@ -11,7 +11,7 @@ git clone https://github.com/ekhodzitsky/agent-mail.git
 cd agent-mail
 cargo install --path . --locked --root "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
-agent-mailer --version
+agent-mail --version
 ```
 
 The installed core does not need Rust, Node.js, Bun or Python at runtime. If you prefer a prebuilt binary, follow [installation](releases.md); clone the source only to obtain the example files below and skip cargo install. The demonstration uses a shell and jq to extract JSON fields. Optional Keyring/IMAP adapters are not needed.
@@ -25,7 +25,7 @@ umask 077
 demo_home="$(mktemp -d)"
 cp examples/demo/config.toml "$demo_home/config.toml"
 cp examples/demo/resume.fixture "$demo_home/resume.pdf"
-agent-mailer --home "$demo_home" preflight --json
+agent-mail --home "$demo_home" preflight --json
 ```
 
 Preflight should return `ok:true` and `result.ready:true`. The example config contains an example.org sender, verified TLS and numeric loopback SMTP settings with no authentication. This is a **syntactic offline fixture**, not a configured real mailbox. No server must be running, and no connection is made. Explicit --home leaves your ordinary state selection unchanged.
@@ -35,11 +35,11 @@ Preflight should return `ok:true` and `result.ready:true`. The example config co
 ## Prepare once, then inspect
 
 ```sh
-package_id="$(agent-mailer --home "$demo_home" prepare \
+package_id="$(agent-mail --home "$demo_home" prepare \
   --to recipient@example.org --subject-file examples/demo/subject.txt \
   --body-file examples/demo/letter.txt --attach "$demo_home/resume.pdf" \
   --operation-key demo/application --json | jq -er '.result.package_id')"
-agent-mailer --home "$demo_home" inspect "$package_id" --json
+agent-mail --home "$demo_home" inspect "$package_id" --json
 ```
 
 Inspect returns the saved sender/recipient, exact subject/body, original attachment filename, sizes, hashes and frozen MIME digest with `integrity:"verified"`. Review this output privately. The operation key lets an identical prepare recover the same ID after lost output; changed inputs conflict. It does not authorize sending.
@@ -49,9 +49,9 @@ Edit the source letter only to create a new package. An existing package's text,
 ## Validate without submission
 
 ```sh
-agent-mailer --home "$demo_home" send "$package_id" --dry-run --json \
+agent-mail --home "$demo_home" send "$package_id" --dry-run --json \
   | jq '{ok, state: .result.state, dry_run: .result.dry_run, network_used: .result.network_used}'
-agent-mailer --home "$demo_home" status "$package_id" --json
+agent-mail --home "$demo_home" status "$package_id" --json
 ```
 
 Expected dry-run projection:

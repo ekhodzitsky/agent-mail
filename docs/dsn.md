@@ -5,7 +5,7 @@ DSN is an optional SMTP extension, not a read receipt. Support can vary across r
 ## Freeze the request
 
 ```sh
-agent-mailer prepare --to recipient@example.org --subject-file subject.txt \
+agent-mail prepare --to recipient@example.org --subject-file subject.txt \
   --body-file letter.txt --attach resume.pdf --dsn required --json
 ```
 
@@ -24,9 +24,9 @@ Capability is checked after certificate-verified implicit TLS or mandatory START
 Save the chosen DSN email outside the source repository; no inbox is scanned automatically.
 
 ```sh
-agent-mailer import-dsn PACKAGE_ID --attempt-id ATTEMPT_ID --file report.eml --json
-agent-mailer inspect-dsn REPORT_ID --json
-agent-mailer status PACKAGE_ID --json
+agent-mail import-dsn PACKAGE_ID --attempt-id ATTEMPT_ID --file report.eml --json
+agent-mail inspect-dsn REPORT_ID --json
+agent-mail status PACKAGE_ID --json
 ```
 
 Input is a regular file up to 1 MiB. Supported MIME: multipart/report with report-type=delivery-status, human-readable first part, exactly one message/delivery-status second part, and an optional returned-message third part. mailparse handles MIME/header parsing with its recursion limit. The strict importer accepts one recipient block only. Unsupported/malformed/duplicate critical fields, aggregate recipient blocks and ambiguous forwarding are rejected rather than guessed.
@@ -44,7 +44,7 @@ Standards: [RFC 3461](https://www.rfc-editor.org/rfc/rfc3461), [RFC 3464](https:
 Use only for one selected original notification:
 
 ```sh
-agent-mailer import-dsn PACKAGE_UUID --attempt-id ATTEMPT_UUID \
+agent-mail import-dsn PACKAGE_UUID --attempt-id ATTEMPT_UUID \
   --file selected-report.eml --correlate-by-headers --json
 ```
 

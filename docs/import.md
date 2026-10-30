@@ -1,6 +1,6 @@
 # Legacy application archive adapter
 
-`agent-mailer import /absolute/path/A0001 --to recipient@example.org --json` reads one explicitly selected prepared archive. It never scans an archive root, changes source files or writes Markdown. It produces a **new** local package ID with metadata.source_id and metadata.source_manifest_sha256, preserving company/role as optional opaque references.
+`agent-mail import /absolute/path/A0001 --to recipient@example.org --json` reads one explicitly selected prepared archive. It never scans an archive root, changes source files or writes Markdown. It produces a **new** local package ID with metadata.source_id and metadata.source_manifest_sha256, preserving company/role as optional opaque references.
 
 The accepted external archive format is schema 1 below; it is not the core package manifest. All published fixtures/tests are synthetic, and only one explicitly selected source directory is read.
 

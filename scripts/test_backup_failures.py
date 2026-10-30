@@ -12,8 +12,8 @@ import unittest
 
 class BackupQuotaTests(unittest.TestCase):
     def test_real_file_size_quota_fails_without_manifest_and_preserves_source(self):
-        binary = str(Path(os.environ.get('AGENT_MAILER_TEST_BIN', 'target/debug/agent-mailer')).resolve())
-        with tempfile.TemporaryDirectory(prefix='agent-mailer-backup-quota-') as directory:
+        binary = str(Path(os.environ.get('AGENT_MAIL_TEST_BIN', 'target/debug/agent-mail')).resolve())
+        with tempfile.TemporaryDirectory(prefix='agent-mail-backup-quota-') as directory:
             root = Path(directory)
             (root / 'config.toml').write_text('sender="sender@example.org"\n')
             (root / 'subject').write_text('Synthetic quota fault')

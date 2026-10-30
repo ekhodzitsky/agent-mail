@@ -28,7 +28,7 @@ def main():
         raise SystemExit('Insufficient free space for bounded synthetic workload')
     env = {'PATH': '/usr/bin:/bin', 'LANG': 'C'}
     results = {'backup': [], 'verify': []}
-    with tempfile.TemporaryDirectory(prefix='agent-mailer-backup-benchmark-', dir=args.work_parent.resolve()) as directory:
+    with tempfile.TemporaryDirectory(prefix='agent-mail-backup-benchmark-', dir=args.work_parent.resolve()) as directory:
         root = Path(directory); home = root/'source'; home.mkdir(mode=0o700)
         (home/'config.toml').write_text('sender="sender@example.org"\n')
         (root/'subject').write_text('Synthetic disk backup')

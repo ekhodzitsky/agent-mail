@@ -1,6 +1,30 @@
 # Upgrade and recovery
 
-Install the default-feature core and matching optional adapters. Keep `~/.local/share/agent-mailer`, `AGENT_MAILER_HOME`, private configuration and stable keyring/schema/application/account identifiers. An earlier executable name is not a reason to create a fresh store. If maintaining an old command alias, point it at the current installation rather than running separate old executables. The configured core/adapter paths must match the fixed destinations documented by the keyring adapter.
+## Rename to agent-mail (0.8)
+
+The executable, Cargo package/crate, portable skill and adapters now use
+`agent-mail`, `agent_mail`, `agent-mail-keyring` and `agent-mail-imap-dsn`.
+Update scripts to these names. Previously released tags/assets keep their
+original names. JSON, package and database schemas are unchanged.
+
+For fresh installations the default state is `$HOME/.local/share/agent-mail`.
+When only `$HOME/.local/share/agent-mailer` exists, both the core and optional
+adapters keep using it. They never move or rewrite packages to rename a tool.
+If both directories exist, selection fails; explicitly select the correct
+core --home. Resolve an adapter's ambiguous defaults before using it.
+`AGENT_MAIL_HOME` is canonical; `AGENT_MAILER_HOME` is still accepted.
+Conflicting environment selectors fail unless --home is explicit.
+
+Keyring's existing `application=agent-mailer` / `org.agent_mailer.SMTP`
+identifiers and private configured password variable names remain stable.
+Do not re-store credentials just to rename an executable. For the optional
+IMAP adapter, update a private explicit binary path to `~/.local/bin/agent-mail`
+without changing home/account settings. Keep old executables until all scripts
+and explicit bindings have been updated; do not run old/new senders together
+during an upgrade. Back up history first as described below.
+
+
+Install the default-feature core and matching optional adapters. Keep `~/.local/share/agent-mail`, `AGENT_MAIL_HOME`, private configuration and stable keyring/schema/application/account identifiers. An earlier executable name is not a reason to create a fresh store. If maintaining an old command alias, point it at the current installation rather than running separate old executables. The configured core/adapter paths must match the fixed destinations documented by the keyring adapter.
 
 Current contracts: JSON envelope 1, core storage 6, package manifests 1–3 and optional IMAP cache 1. Recognized older core layouts migrate atomically without rewriting frozen materials or attempts. Older readers cannot open schema 6; downgrade is unsupported. See [migration details](storage-migrations.md).
 

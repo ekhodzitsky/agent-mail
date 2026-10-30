@@ -4,7 +4,7 @@ Reviewed on 2026-10-30 from primary documentation. The task is an agent preparin
 
 | Project / reviewed reference | Documented workflow | Reason to choose it |
 |---|---|---|
-| Agent Mail, current 0.7.1 source | Frozen package/MIME, explicit review, durable attempt journal, accepted/unknown blocks; optional selected-DSN reader | Agents that need a persisted preparation/submission boundary and conservative retry behavior |
+| Agent Mail, current 0.8.0 source | Frozen package/MIME, explicit review, durable attempt journal, accepted/unknown blocks; optional selected-DSN reader | Agents that need a persisted preparation/submission boundary and conservative retry behavior |
 | msmtp, official project overview (unversioned) | Sendmail-compatible submission to an SMTP server; TLS, multiple accounts and DSN support | Existing mail composers/pipelines that already produce messages and manage their own workflow |
 | Himalaya, master documentation and Cargo version 2.2.1 | Mailboxes/messages/attachments; IMAP, SMTP and other backends; JSON output | Broader CLI mailbox operations beyond selected delivery-notification import |
 

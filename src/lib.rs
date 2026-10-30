@@ -10,6 +10,7 @@ mod files;
 mod legacy;
 mod listing;
 mod package;
+mod paths;
 mod reconciliation;
 mod schema;
 mod smtp;
@@ -63,15 +64,15 @@ fn now() -> String {
 
 #[derive(Parser)]
 #[command(
-    bin_name = "agent-mailer",
+    bin_name = "agent-mail",
     version,
     about = "Email CLI for AI agents: prepare immutable packages and submit explicitly authorized mail"
 )]
 pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
-    /// State directory; retains the legacy AGENT_MAILER_HOME environment variable.
-    #[arg(long, global = true, env = "AGENT_MAILER_HOME")]
+    /// State directory; otherwise AGENT_MAIL_HOME or the compatible default.
+    #[arg(long, global = true)]
     pub home: Option<PathBuf>,
     #[arg(long, global = true)]
     pub config: Option<PathBuf>,
@@ -198,17 +199,10 @@ pub fn run(cli: Cli) -> Result<Value> {
         return backup::verify(source);
     }
     if matches!(cli.command, Command::Preflight) {
-        let path = cli
-            .config
-            .or_else(|| {
-                cli.home
-                    .or_else(|| {
-                        std::env::var_os("HOME")
-                            .map(|h| PathBuf::from(h).join(".local/share/agent-mailer"))
-                    })
-                    .map(|h| h.join("config.toml"))
-            })
-            .ok_or_else(invalid)?;
+        let path = match cli.config {
+            Some(path) => path,
+            None => paths::home(cli.home)?.join("config.toml"),
+        };
         return diagnostics::preflight(&path);
     }
     if let Command::SmtpWorker {
@@ -226,14 +220,7 @@ pub fn run(cli: Cli) -> Result<Value> {
             std::process::exit(8);
         });
     }
-    // Preserve the existing journal/config location across the Agent Mailer rename.
-    // Selecting a fresh store would hide prior accepted/unknown resend blocks.
-    let home = cli
-        .home
-        .or_else(|| {
-            std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share/agent-mailer"))
-        })
-        .ok_or_else(invalid)?;
+    let home = paths::home(cli.home)?;
     if let Command::Backup { output } = &cli.command {
         return backup::create_from_home(&home, output);
     }

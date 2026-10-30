@@ -31,4 +31,4 @@ Release bookkeeping never authorizes real-provider mail or publication of operat
 
 ## Public source baseline
 
-Agent Mail starts from one reviewed source-only initial commit at product version 0.7.0. CLI/package/adapter names remain agent-mailer for runtime compatibility; repository naming does not reset mail state, credential lookup identities or serialized formats. Earlier Git history and operational data are not part of this repository. Only new commits and immutable release tags are published here. Git author attribution is retained intentionally.
+Agent Mail starts from one reviewed source-only initial commit at product version 0.7.0. Version 0.8 renames the CLI, Cargo package and adapters to agent-mail. Compatibility with existing state and credential lookup identities is retained; serialized formats are unchanged. Earlier Git history and operational data are not part of this repository. Only new commits and immutable release tags are published here. Git author attribution is retained intentionally.

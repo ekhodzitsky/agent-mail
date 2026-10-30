@@ -16,7 +16,7 @@ parser.add_argument('new',type=Path)
 parser.add_argument('--reports',action='store_true',help='Also preserve strict/header-correlated evidence; requires an old reader supporting these commands.')
 options=parser.parse_args()
 old,new=str(options.old.resolve()),str(options.new.resolve())
-with tempfile.TemporaryDirectory(prefix='agent-mailer-upgrade-') as directory:
+with tempfile.TemporaryDirectory(prefix='agent-mail-upgrade-') as directory:
     root = Path(directory)
     home = root / 'state'
     home.mkdir()

@@ -55,7 +55,7 @@ fn preflight_explicit_config_needs_no_home_or_database() {
     let output = Command::new(binary())
         .args(["--config", config.to_str().unwrap(), "preflight", "--json"])
         .env_remove("HOME")
-        .env_remove("AGENT_MAILER_HOME")
+        .env_remove("AGENT_MAIL_HOME")
         .output()
         .unwrap();
     let (code, result) = decode(output);

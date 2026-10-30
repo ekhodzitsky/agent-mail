@@ -18,6 +18,8 @@ The following examples show envelope shape, not complete prepare output:
 
 Operational envelopes can also contain top-level next guidance. Consumers must allow additive fields/actions and compare error.code and result.state rather than English messages. Breaking serialized changes need a new schema/migration. Output/OS failure or external termination can prevent a JSON result; missing output never authorizes retry.
 
+State-selection error `home_ambiguous` (exit 3) means conflicting home environment selectors or two existing default histories. No state is opened. Select the intended --home explicitly; do not reset history.
+
 ## Independent versions
 
 | Contract | Current |
@@ -71,7 +73,7 @@ Doctor succeeds with smtp_ready:false when SMTP is absent, but unavailable/malfo
 
 Exit 7 during submission does not establish non-delivery; inspect durable history. Exit 8 also covers worker termination/missing results and does not prove that an attempt exists: status may still be prepared or already accepted. Explicit rejection is exit 6; any new attempt needs a fresh owner instruction. Never infer permission from a diagnostic code or absent output.
 
-Usage errors omit untrusted argv values. JSON help uses result.help for the selected subcommand and the canonical agent-mailer usage name; version additionally returns result.version. Help/version/usage may omit next. Output failure exits 7 without a guaranteed envelope.
+Usage errors omit untrusted argv values. JSON help uses result.help for the selected subcommand and the canonical agent-mail usage name; version additionally returns result.version. Help/version/usage may omit next. Output failure exits 7 without a guaranteed envelope.
 
 ## State-opening effects
 

@@ -2,8 +2,8 @@
 # Local release gate; no hosted jobs and no real SMTP connections.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-unset AGENT_MAILER_TEST_BIN
-msrv="${AGENT_MAILER_MSRV_TOOLCHAIN:-1.88}"
+unset AGENT_MAIL_TEST_BIN
+msrv="${AGENT_MAIL_MSRV_TOOLCHAIN:-1.88}"
 run() { printf '\n+ '; printf '%q ' "$@"; printf '\n'; "$@"; }
 run /usr/bin/python3 - "$msrv" <<'PYTHON'
 import subprocess
@@ -46,14 +46,14 @@ install_root="$(mktemp -d)"
 trap 'rm -rf -- "$install_root"' EXIT
 # Separate install roots ensure the test transport never becomes a shipped artifact.
 run cargo +stable install --path . --locked --features test-smtp --root "$install_root/test" --target-dir target
-run env AGENT_MAILER_TEST_BIN="$install_root/test/bin/agent-mailer" cargo +stable test --locked --features test-smtp --test cli smtp::vertical_scenario_and_duplicate_block -- --exact
-run env AGENT_MAILER_TEST_BIN="$install_root/test/bin/agent-mailer" cargo +stable test --locked --features test-smtp --test cli smtp::dsn
+run env AGENT_MAIL_TEST_BIN="$install_root/test/bin/agent-mail" cargo +stable test --locked --features test-smtp --test cli smtp::vertical_scenario_and_duplicate_block -- --exact
+run env AGENT_MAIL_TEST_BIN="$install_root/test/bin/agent-mail" cargo +stable test --locked --features test-smtp --test cli smtp::dsn
 run cargo +stable install --path . --locked --root "$install_root/production" --target-dir target
-run env -i "$install_root/production/bin/agent-mailer" --version
-run env -i "$install_root/production/bin/agent-mailer" --help
-run env AGENT_MAILER_TEST_BIN="$install_root/production/bin/agent-mailer" cargo +stable test --locked --test cli
-run env AGENT_MAILER_TEST_BIN="$install_root/production/bin/agent-mailer" /usr/bin/python3 -B -m unittest discover -s integrations/imap-dsn -p 'test_*.py'
-run env AGENT_MAILER_TEST_BIN="$install_root/production/bin/agent-mailer" /usr/bin/python3 -B -m unittest discover -s scripts -p test_backup_failures.py
-run /usr/bin/python3 -B scripts/check-docs.py --binary "$install_root/production/bin/agent-mailer"
+run env -i "$install_root/production/bin/agent-mail" --version
+run env -i "$install_root/production/bin/agent-mail" --help
+run env AGENT_MAIL_TEST_BIN="$install_root/production/bin/agent-mail" cargo +stable test --locked --test cli
+run env AGENT_MAIL_TEST_BIN="$install_root/production/bin/agent-mail" /usr/bin/python3 -B -m unittest discover -s integrations/imap-dsn -p 'test_*.py'
+run env AGENT_MAIL_TEST_BIN="$install_root/production/bin/agent-mail" /usr/bin/python3 -B -m unittest discover -s scripts -p test_backup_failures.py
+run /usr/bin/python3 -B scripts/check-docs.py --binary "$install_root/production/bin/agent-mail"
 if "$source_has_git"; then run git diff --check; fi
-printf '\nLocal verification passed. Production binary: target/release/agent-mailer\n'
+printf '\nLocal verification passed. Production binary: target/release/agent-mail\n'

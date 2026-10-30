@@ -3,8 +3,8 @@
 `backup` copies the selected core database and, if present, its IMAP cache into a **new** private directory. It uses SQLite Backup API, not a raw live file copy. It never connects to SMTP/IMAP, retrieves credentials or restores a running installation.
 
 ```sh
-agent-mailer backup --output /private/backups/snapshot-001 --json
-agent-mailer verify-backup /private/backups/snapshot-001 --json
+agent-mail backup --output /private/backups/snapshot-001 --json
+agent-mail verify-backup /private/backups/snapshot-001 --json
 ```
 
 Use a trusted private parent outside Git and retain another protected backup. The output contains correspondence, PDFs, attempts and evidence: it is unencrypted private data. Existing output paths are refused. Directory/file modes are 0700/0600 on supported Linux. Symlink/nonregular/multilink database or manifest files are refused. Trusted directory ancestors and local storage remain prerequisites.

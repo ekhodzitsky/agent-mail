@@ -13,7 +13,7 @@ class DocumentedInstallTests(unittest.TestCase):
     def check_failure(self, checksum_failure):
         text = (ROOT/'docs/releases.md').read_text().split('## Install the native Linux asset', 1)[1]
         code = re.search(r'```sh\n(.*?)\n```', text, re.S)[1]
-        name = re.search(r'-o "\$download_dir/(agent-mailer-[^"]+)"', code)[1]
+        name = re.search(r'-o "\$download_dir/(agent-mail-[^"]+)"', code)[1]
         with tempfile.TemporaryDirectory(prefix='agent-mail-install-doc-') as directory:
             home = Path(directory); tools = home/'tools'; tools.mkdir()
             if checksum_failure:
@@ -32,7 +32,7 @@ class DocumentedInstallTests(unittest.TestCase):
                              capture_output=True,timeout=10)
             self.assertNotEqual(p.returncode,0)
             self.assertFalse(marker.exists(),'Documented install proceeded after verification failure')
-            self.assertFalse((home/'.local/bin/agent-mailer').exists())
+            self.assertFalse((home/'.local/bin/agent-mail').exists())
 
     def test_transfer_failure_never_reaches_install(self):
         self.check_failure(False)

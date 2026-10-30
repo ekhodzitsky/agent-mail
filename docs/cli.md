@@ -1,6 +1,6 @@
 # Command reference
 
-All commands below are from the native `agent-mailer` binary. Use `describe --json` for the installed parser contract, `COMMAND --help --json` for its options, and the [JSON reference](json-contract.md) for response fields/errors. [Configuration](configuration.md) defines global --home/--config resolution. Commands do not prompt.
+All commands below are from the native `agent-mail` binary. Use `describe --json` for the installed parser contract, `COMMAND --help --json` for its options, and the [JSON reference](json-contract.md) for response fields/errors. [Configuration](configuration.md) defines global --home/--config resolution. Commands do not prompt.
 
 ## Command map
 

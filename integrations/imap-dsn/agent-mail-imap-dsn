@@ -72,10 +72,26 @@ def credential_env_name(name):
     # A secret must never become loader/interpreter/locale configuration.
     reserved = {"HOME", "PATH", "USER", "LOGNAME", "SHELL", "ENV", "BASH_ENV", "IFS", "CDPATH",
                 "LANG", "LANGUAGE", "TZ", "TMPDIR", "GCONV_PATH", "LOCPATH", "GLIBC_TUNABLES",
-                "MALLOC_TRACE", "SSLKEYLOGFILE", "RUST_BACKTRACE", "RUST_LIB_BACKTRACE", "RUST_LOG", "AGENT_MAILER_HOME"}
+                "MALLOC_TRACE", "SSLKEYLOGFILE", "RUST_BACKTRACE", "RUST_LIB_BACKTRACE", "RUST_LOG", "AGENT_MAIL_HOME", "AGENT_MAILER_HOME"}
     return (isinstance(name, str) and bool(name) and "=" not in name and "\x00" not in name
             and name not in reserved
             and not name.startswith(("LD_", "DYLD_", "PYTHON", "LC_", "SSL_CERT_", "OPENSSL_")))
+
+
+
+def default_home():
+    """Preserve old attempt history; refuse ambiguous defaults before credentials."""
+    base = Path.home() / ".local/share"
+    current, legacy = base / "agent-mail", base / "agent-mailer"
+    def present(path):
+        try:
+            path.lstat()
+            return True
+        except FileNotFoundError:
+            return False
+    if present(current) and present(legacy):
+        raise ValueError("Ambiguous state locations")
+    return legacy if present(legacy) else current
 
 
 def config(path):
@@ -89,8 +105,8 @@ def config(path):
         raise Failure("configuration", 3)
     defaults = {"port": 993, "mailbox": "INBOX", "timeout_seconds": 10,
                 "total_timeout_seconds": 60, "max_messages": 20,
-                "home": str(Path.home() / ".local/share/agent-mailer"),
-                "binary": str(Path.home() / ".local/bin/agent-mailer")}
+                "home": cfg.get("home") or str(default_home()),
+                "binary": str(Path.home() / ".local/bin/agent-mail")}
     cfg = defaults | cfg
     for name in ("host", "username", "password_env", "mailbox", "home", "binary"):
         value = cfg.get(name)
@@ -403,7 +419,7 @@ def worker(cfg, request):
             raw = bodies[0]
             if request.message_id:
                 verify_message_id(raw, request.message_id)
-            with tempfile.TemporaryDirectory(prefix="agent-mailer-dsn-") as directory:
+            with tempfile.TemporaryDirectory(prefix="agent-mail-dsn-") as directory:
                 path = Path(directory) / "report.eml"
                 fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
                 with os.fdopen(fd, "wb") as target:

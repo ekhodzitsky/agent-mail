@@ -453,7 +453,7 @@ mod tests {
         pdf[..5].copy_from_slice(b"%PDF-");
         fs::write(root.join("resume.pdf"), pdf).unwrap();
         let args = vec![
-            "agent-mailer".into(),
+            "agent-mail".into(),
             "--home".into(),
             root.join("source").into_os_string(),
             "--config".into(),
@@ -497,7 +497,7 @@ mod tests {
     }
     #[test]
     fn mid_copy_child_fixture() {
-        let Some(root) = std::env::var_os("AGENT_MAILER_UNIT_BACKUP_CHILD") else {
+        let Some(root) = std::env::var_os("AGENT_MAIL_UNIT_BACKUP_CHILD") else {
             return;
         };
         let root = std::path::PathBuf::from(root);
@@ -536,7 +536,7 @@ mod tests {
                     "backup::tests::mid_copy_child_fixture",
                     "--nocapture",
                 ])
-                .env("AGENT_MAILER_UNIT_BACKUP_CHILD", root.path())
+                .env("AGENT_MAIL_UNIT_BACKUP_CHILD", root.path())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()

@@ -34,24 +34,24 @@ def call(binary, home, *args, code=0):
     value.pop("next", None)  # Invocation guidance is not archived package/history data.
     return value
 # Install a prior release then replace it with the candidate in the clean home.
-installed=Path(root)/'usr/local/bin/agent-mailer'
+installed=Path(root)/'usr/local/bin/agent-mail'
 shutil.copy2(work/'old',installed)
 ids=[]
 for outcome in ['accepted','unknown']:
-    p=call('/usr/local/bin/agent-mailer',guest+'/state','prepare','--to','recipient@example.org','--subject-file',guest+'/subject','--body-file',guest+'/body','--attach',guest+'/resume.pdf')['result']
+    p=call('/usr/local/bin/agent-mail',guest+'/state','prepare','--to','recipient@example.org','--subject-file',guest+'/subject','--body-file',guest+'/body','--attach',guest+'/resume.pdf')['result']
     ids.append(p['package_id'])
     with contextlib.closing(sqlite3.connect(state/'mail.sqlite3')) as db, db:
         db.execute('INSERT INTO attempts VALUES(?,?,?,?,?,?,?)',(outcome,p['package_id'],'2026-01-01T00:00:00+00:00',None if outcome=='unknown' else '2026-01-01T00:01:00+00:00',outcome,p['manifest']['message_id'],None))
-before=[(call('/usr/local/bin/agent-mailer',guest+'/state','inspect',i),call('/usr/local/bin/agent-mailer',guest+'/state','status',i)) for i in ids]
+before=[(call('/usr/local/bin/agent-mail',guest+'/state','inspect',i),call('/usr/local/bin/agent-mail',guest+'/state','status',i)) for i in ids]
 shutil.copytree(state,work/'restored')
 shutil.copy2(work/'new',installed)
 for home in ['state','restored']:
     for pid,(inspect,status) in zip(ids,before):
-        assert call('/usr/local/bin/agent-mailer',guest+'/'+home,'inspect',pid)==inspect
-        after=call('/usr/local/bin/agent-mailer',guest+'/'+home,'status',pid)
+        assert call('/usr/local/bin/agent-mail',guest+'/'+home,'inspect',pid)==inspect
+        after=call('/usr/local/bin/agent-mail',guest+'/'+home,'status',pid)
         if 'delivery_observation' not in status['result']: after['result'].pop('delivery_observation',None)
         if 'dsn' not in status['result']: after['result'].pop('dsn',None)
         assert after==status
         (work/home/'config.toml').write_text("sender='sender@example.org'\n[smtp]\nhost='smtp.example.invalid'\nport=465\nsecurity='tls'\n")
-        assert call('/usr/local/bin/agent-mailer',guest+'/'+home,'send',pid,code=5)['error']['code']=='send_blocked'
+        assert call('/usr/local/bin/agent-mail',guest+'/'+home,'send',pid,code=5)['error']['code']=='send_blocked'
 print('Clean Ubuntu rootfs install/upgrade/restore passed. Synthetic accepted/unknown packages remain blocked; no network.')

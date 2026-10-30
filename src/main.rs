@@ -7,7 +7,7 @@ use std::io::Write;
 
 fn main() {
     let json_mode = std::env::args_os().any(|arg| arg == "--json");
-    let args = match agent_mailer::Cli::try_parse() {
+    let args = match agent_mail::Cli::try_parse() {
         Ok(args) => args,
         Err(error) => {
             let help = matches!(
@@ -16,7 +16,7 @@ fn main() {
             );
             if json_mode {
                 let result = if error.kind() == clap::error::ErrorKind::DisplayVersion {
-                    json!({"version": env!("CARGO_PKG_VERSION"), "help": format!("agent-mailer {}\n", env!("CARGO_PKG_VERSION"))})
+                    json!({"version": env!("CARGO_PKG_VERSION"), "help": format!("agent-mail {}\n", env!("CARGO_PKG_VERSION"))})
                 } else if help {
                     json!({"help": error.to_string()})
                 } else {
@@ -43,8 +43,8 @@ fn main() {
             std::process::exit(if help { 0 } else { 2 });
         }
     };
-    let guidance = agent_mailer::Guidance::new(&args);
-    let (mut value, code) = match agent_mailer::run(args) {
+    let guidance = agent_mail::Guidance::new(&args);
+    let (mut value, code) = match agent_mail::run(args) {
         Ok(value) => (
             json!({"schema_version":1,"ok":true,"result":value,"error":null}),
             0,

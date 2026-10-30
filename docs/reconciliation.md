@@ -33,9 +33,9 @@ Replace the identifiers with values from the selected synthetic or authorized pa
 `source`: provider_log, provider_support, recipient_confirmation or owner_review. `conclusion`: accepted, not_accepted or inconclusive. These are **asserted observations**, not transport state. observed_at requires RFC3339 with an explicit offset. Unknown fields, empty reviewer/reference/summary, embedded NUL and text fields above 8192 bytes are rejected. Total evidence size is at most 64 KiB. IDs, Message-ID and manifest digest must bind to the selected package's unknown attempt.
 
 ```sh
-agent-mailer reconcile PACKAGE_ID --evidence-file evidence.json --json
-agent-mailer inspect-reconciliation RECORD_ID --json
-agent-mailer status PACKAGE_ID --json
+agent-mail reconcile PACKAGE_ID --evidence-file evidence.json --json
+agent-mail inspect-reconciliation RECORD_ID --json
+agent-mail status PACKAGE_ID --json
 ```
 
 Recording requires the same exclusive package lock used by send, so a live send returns busy. The exact input bytes, their SHA-256/size, record UUID and UTC recording timestamp are saved atomically in an append-only table. Repeating identical bytes for the same attempt returns the existing record with already_recorded:true. Whitespace changes or new observations produce different records. Failed commits do not leave a partial observation. Reconciliation never changes the original attempt, Message-ID, package state or retry policy, and never connects to a mail server.

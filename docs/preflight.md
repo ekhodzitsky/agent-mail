@@ -5,11 +5,11 @@ These commands never send mail, read an inbox or open/migrate the operational da
 ## Native core
 
 ```sh
-agent-mailer preflight --json
-agent-mailer --config /private/config.toml preflight --json
+agent-mail preflight --json
+agent-mail --config /private/config.toml preflight --json
 ```
 
-Use the [configuration reference](configuration.md) for TOML fields and credential setup. Selects configuration using explicit `--config`, otherwise `--home`/`AGENT_MAILER_HOME`, otherwise the existing default home. Explicit config works without HOME. Unlike doctor, this does not create a state directory/database or expose sender/login/path values in the result.
+Use the [configuration reference](configuration.md) for TOML fields and credential setup. Selects configuration using explicit `--config`, otherwise `--home`/`AGENT_MAIL_HOME`, otherwise the existing default home. Explicit config works without HOME. Unlike doctor, this does not create a state directory/database or expose sender/login/path values in the result.
 
 `result` uses `preflight_schema_version:1`, `ready`, `checks`, `network_used:false`, `storage_opened:false`, `credential_content_validated:false` and `remote_authentication_verified:false`. The envelope remains JSON schema 1.
 
@@ -24,7 +24,7 @@ Core preflight constructs a validated transport with a placeholder, not the cred
 ## Optional desktop adapter
 
 ```sh
-agent-mailer-keyring preflight --json
+agent-mail-keyring preflight --json
 ```
 
 This exact invocation checks the existing fixed configuration/binary binding and the matching Keyring item's **metadata**. It uses the same private keyring.toml identities as run; it does not store, retrieve, print or inject a password. It contacts the desktop Secret Service over D-Bus. Search uses ALL without UNLOCK/LOAD_SECRETS; the proxy requests NONE rather than a secret-transfer session. Incoming metadata is reduced to fixed statuses, never item labels, account values or library errors.

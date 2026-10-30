@@ -23,7 +23,7 @@ def main():
     versions = {name: subprocess.check_output([binary, '--version'], env=env, text=True).strip()
                 for name, binary in [('old', old), ('new', new)]}
     results = {name: [] for name in ('old_full', 'new_full', 'new_page_25', 'new_ids_25')}
-    with tempfile.TemporaryDirectory(prefix='agent-mailer-list-benchmark-') as directory:
+    with tempfile.TemporaryDirectory(prefix='agent-mail-list-benchmark-') as directory:
         root = Path(directory)
         (root / 'config.toml').write_text('sender="sender@example.org"\n')
         (root / 'subject').write_text('Synthetic application')

@@ -20,13 +20,25 @@ import unittest
 import uuid
 from unittest.mock import patch, Mock
 
-SCRIPT = Path(__file__).with_name("agent-mailer-imap-dsn").resolve()
+SCRIPT = Path(__file__).with_name("agent-mail-imap-dsn").resolve()
 ROOT = SCRIPT.parents[2]
 loader = importlib.machinery.SourceFileLoader("imap_adapter", str(SCRIPT))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 adapter = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = adapter
 loader.exec_module(adapter)
+
+
+def setUpModule():
+    global isolated_home, home_patch
+    isolated_home = tempfile.TemporaryDirectory()
+    home_patch = patch.object(Path, 'home', return_value=Path(isolated_home.name))
+    home_patch.start()
+
+
+def tearDownModule():
+    home_patch.stop()
+    isolated_home.cleanup()
 
 
 class Server:
@@ -123,7 +135,7 @@ class Server:
 class AdapterTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.certs = tempfile.TemporaryDirectory(prefix="agent-mailer-imap-tls-")
+        cls.certs = tempfile.TemporaryDirectory(prefix="agent-mail-imap-tls-")
         cls.cert = Path(cls.certs.name) / "ca.pem"
         cls.key = Path(cls.certs.name) / "key.pem"
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
@@ -136,12 +148,12 @@ class AdapterTests(unittest.TestCase):
         cls.certs.cleanup()
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="agent-mailer-imap-case-")
+        self.temp = tempfile.TemporaryDirectory(prefix="agent-mail-imap-case-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.home = self.root / "state"
         self.home.mkdir(mode=0o700)
-        self.binary = os.environ.get("AGENT_MAILER_TEST_BIN", str(ROOT / "target/debug/agent-mailer"))
+        self.binary = os.environ.get("AGENT_MAIL_TEST_BIN", str(ROOT / "target/debug/agent-mail"))
         (self.home / "config.toml").write_text("sender='sender@example.org'\n")
         (self.root / "subject").write_text("Synthetic")
         (self.root / "body").write_text("Synthetic letter")
@@ -639,12 +651,12 @@ class AdapterTests(unittest.TestCase):
 
     def test_standalone_adapters_share_process_control_environment_policy(self):
         name='keyring_env_policy'
-        loader=importlib.machinery.SourceFileLoader(name,str(ROOT/'integrations/gnome-keyring/agent-mailer-keyring'))
+        loader=importlib.machinery.SourceFileLoader(name,str(ROOT/'integrations/gnome-keyring/agent-mail-keyring'))
         spec=importlib.util.spec_from_loader(loader.name,loader);keyring=importlib.util.module_from_spec(spec)
         loader.exec_module(keyring)
-        for variable in ['AGENT_MAILER_SMTP_PASSWORD','SMTP_TOKEN','mail_password','MAIL-PASSWORD',
+        for variable in ['AGENT_MAIL_SMTP_PASSWORD','SMTP_TOKEN','mail_password','MAIL-PASSWORD',
                          'LD_PRELOAD','LD_AUDIT','PYTHONHOME','PATH','HOME','LC_ALL','SSL_CERT_FILE',
-                         'GLIBC_TUNABLES','RUST_BACKTRACE','AGENT_MAILER_HOME','bad=name','bad\x00name']:
+                         'GLIBC_TUNABLES','RUST_BACKTRACE','AGENT_MAIL_HOME','bad=name','bad\x00name']:
             self.assertEqual(adapter.credential_env_name(variable),keyring.credential_env_name(variable))
 
     def test_process_control_credential_environment_is_rejected(self):
@@ -653,7 +665,7 @@ class AdapterTests(unittest.TestCase):
             self.assertEqual(code,0)
             path=self.root/'imap.toml';good=path.read_text()
             for name in ['LD_AUDIT','LD_DEBUG','DYLD_INSERT_LIBRARIES','PYTHONINSPECT','LANG','LC_ALL',
-                         'SSL_CERT_FILE','OPENSSL_CONF','OPENSSL_MODULES','SSLKEYLOGFILE','GCONV_PATH','GLIBC_TUNABLES','RUST_BACKTRACE','AGENT_MAILER_HOME']:
+                         'SSL_CERT_FILE','OPENSSL_CONF','OPENSSL_MODULES','SSLKEYLOGFILE','GCONV_PATH','GLIBC_TUNABLES','RUST_BACKTRACE','AGENT_MAIL_HOME']:
                 path.write_text(good.replace('SYNTHETIC_IMAP_PASSWORD',name));path.chmod(0o600)
                 with self.assertRaises(adapter.Failure) as raised:adapter.config(path)
                 self.assertEqual(raised.exception.code,'configuration')
@@ -780,4 +792,25 @@ class LocalBoundaryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     import sys
+    unittest.main()
+
+
+class RenameTests(unittest.TestCase):
+    def test_default_history_selection_never_hides_legacy_store(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(Path, 'home', return_value=Path(root)):
+            current = Path(root) / '.local/share/agent-mail'
+            legacy = Path(root) / '.local/share/agent-mailer'
+            self.assertEqual(adapter.default_home(), current)
+            legacy.mkdir(parents=True)
+            self.assertEqual(adapter.default_home(), legacy)
+            current.mkdir()
+            with self.assertRaises(ValueError):
+                adapter.default_home()
+            current.rmdir()
+            legacy.rmdir()
+            legacy.symlink_to(Path(root) / 'missing')
+            self.assertEqual(adapter.default_home(), legacy)
+
+
+if __name__ == "__main__":
     unittest.main()

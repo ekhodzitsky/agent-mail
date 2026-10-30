@@ -12,6 +12,6 @@ Keep .env, mail state, keys, generated builds and agent/session caches out of Gi
 
 ## Documentation changes
 
-Start with the [documentation map](docs/README.md#documentation-ownership). Keep the root README concise and task-oriented; preserve detailed contracts in their canonical references. Verify copyable examples with synthetic data, recheck primary-source comparisons and separate measured results from unverified capabilities. Run `python3 -B scripts/check-docs.py --binary /path/to/agent-mailer`; update discovery parity if a command moves between documents. Missing coverage/download measurements are not badges.
+Start with the [documentation map](docs/README.md#documentation-ownership). Keep the root README concise and task-oriented; preserve detailed contracts in their canonical references. Verify copyable examples with synthetic data, recheck primary-source comparisons and separate measured results from unverified capabilities. Run `python3 -B scripts/check-docs.py --binary /path/to/agent-mail`; update discovery parity if a command moves between documents. Missing coverage/download measurements are not badges.
 
 For documentation-only edits, run link/contract checks and execute affected synthetic examples; do not rerun remote CI or pretend a runtime release occurred. Keep command responses/current schema claims consistent with describe and source, and preserve released tags/assets.

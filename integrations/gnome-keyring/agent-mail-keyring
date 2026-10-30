@@ -17,8 +17,24 @@ LOGIN = "login@example.org"
 HOST = "smtp.yandex.ru"
 PORT = 465
 SECURITY = "tls"
-PASSWORD_ENV = "AGENT_MAILER_SMTP_PASSWORD"
+PASSWORD_ENV = "AGENT_MAIL_SMTP_PASSWORD"
+# Stable credential identity retained across executable renaming.
 ATTRS = {"application": "agent-mailer", "account": ACCOUNT}
+
+
+def default_home():
+    """Preserve old attempt history; refuse ambiguous defaults before credentials."""
+    base = Path.home() / ".local/share"
+    current, legacy = base / "agent-mail", base / "agent-mailer"
+    def present(path):
+        try:
+            path.lstat()
+            return True
+        except FileNotFoundError:
+            return False
+    if present(current) and present(legacy):
+        raise ValueError("Ambiguous state locations")
+    return legacy if present(legacy) else current
 
 
 def emit(value, code=0):
@@ -99,7 +115,7 @@ def keyring_worker(connection, operation, password):
             result = retrieve(Secret, schema)
         elif operation == "store":
             result = Secret.password_store_sync(schema, ATTRS, Secret.COLLECTION_DEFAULT,
-                                                "Agent Mailer SMTP", password, None)
+                                                "Agent Mail SMTP", password, None)
             if not result:
                 raise ValueError()
         else:
@@ -161,7 +177,7 @@ def credential_env_name(name):
     # A secret must never become loader/interpreter/locale configuration.
     reserved = {"HOME", "PATH", "USER", "LOGNAME", "SHELL", "ENV", "BASH_ENV", "IFS", "CDPATH",
                 "LANG", "LANGUAGE", "TZ", "TMPDIR", "GCONV_PATH", "LOCPATH", "GLIBC_TUNABLES",
-                "MALLOC_TRACE", "SSLKEYLOGFILE", "RUST_BACKTRACE", "RUST_LIB_BACKTRACE", "RUST_LOG", "AGENT_MAILER_HOME"}
+                "MALLOC_TRACE", "SSLKEYLOGFILE", "RUST_BACKTRACE", "RUST_LIB_BACKTRACE", "RUST_LOG", "AGENT_MAIL_HOME", "AGENT_MAILER_HOME"}
     return (isinstance(name, str) and bool(name) and "=" not in name and "\x00" not in name
             and name not in reserved
             and not name.startswith(("LD_", "DYLD_", "PYTHON", "LC_", "SSL_CERT_", "OPENSSL_")))
@@ -258,7 +274,7 @@ def validate_imap(args, home):
     if (any(cfg.get(k, default) != binding[k] for k, default in (("host", None), ("port", 993), ("mailbox", "INBOX")))
             or cfg.get("username") != LOGIN or cfg.get("password_env") != PASSWORD_ENV
             or cfg.get("home", str(home)) != str(home)
-            or cfg.get("binary", str(Path.home() / ".local/bin/agent-mailer")) != str(Path.home() / ".local/bin/agent-mailer")):
+            or cfg.get("binary", str(Path.home() / ".local/bin/agent-mail")) != str(Path.home() / ".local/bin/agent-mail")):
         raise ValueError()
     return config
 
@@ -286,7 +302,7 @@ def preflight(home):
         checks["binding"] = "missing"
     except Exception:
         checks["binding"] = "invalid_or_unavailable"
-    binary = Path.home() / ".local/bin/agent-mailer"
+    binary = Path.home() / ".local/bin/agent-mail"
     checks["core_binary"] = executable_state(binary)
     if checks["binding"] == "ready":
         try:
@@ -334,13 +350,13 @@ def preflight(home):
 def main(args):
     if not args:
         return fail()
-    home = Path.home() / ".local/share/agent-mailer"
+    home = default_home()
     if args == ["preflight", "--json"]:
         return preflight(home)
     configure_binding(home)
     if args == ["store"]:
         # Only this owner-operated setup path is interactive. Never print stdout.
-        dialog = subprocess.run(["/usr/bin/zenity", "--password", "--title=Agent Mailer: пароль приложения"],
+        dialog = subprocess.run(["/usr/bin/zenity", "--password", "--title=Agent Mail: пароль приложения"],
                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                 timeout=300, check=False)
         if dialog.returncode != 0:
@@ -353,14 +369,14 @@ def main(args):
         return emit({"schema_version": 1, "ok": True, "result": {"stored": True}, "error": None})
     if args[0] not in ("run", "imap-dsn") or len(args) < 2:
         return fail()
-    home = Path.home() / ".local/share/agent-mailer"
+    home = default_home()
     if args[0] == "imap-dsn":
         config = validate_imap(args[1:], home)
-        binary = str(Path.home() / ".local/bin/agent-mailer-imap-dsn")
+        binary = str(Path.home() / ".local/bin/agent-mail-imap-dsn")
         command = [binary, "--config", str(config), *args[1:]]
     else:
         config = validate_run(args[1:], home)
-        binary = str(Path.home() / ".local/bin/agent-mailer")
+        binary = str(Path.home() / ".local/bin/agent-mail")
         command = [binary, "--home", str(home), "--config", str(config), *args[1:]]
     password = keyring_operation("lookup")
     env = os.environ.copy()

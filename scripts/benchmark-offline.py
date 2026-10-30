@@ -33,7 +33,7 @@ def main():
         return output['result']
 
     for _ in range(args.runs):
-        with tempfile.TemporaryDirectory(prefix='agent-mailer-benchmark-') as directory:
+        with tempfile.TemporaryDirectory(prefix='agent-mail-benchmark-') as directory:
             home = Path(directory)
             (home / 'config.toml').write_text('sender = "sender@example.org"\n[smtp]\nhost = "127.0.0.1"\nport = 465\nsecurity = "tls"\n')
             (home / 'subject.txt').write_text('Synthetic application')
